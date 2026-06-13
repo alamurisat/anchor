@@ -118,7 +118,7 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
           <Icon name="back" className="icon" />
         </button>
         <div className="bridge__titles">
-          <h1>MemoryBridge</h1>
+          <h1>Memory Lane</h1>
           <p>{sharedCount} memories shared by family</p>
         </div>
       </header>

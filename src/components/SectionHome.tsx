@@ -22,7 +22,7 @@ type TileDef = { view: string; icon: IconName; title: string; sub: string };
 const FEATURES: Record<string, { icon: IconName; title: string; sub: string }> = {
   dailyanchor: { icon: "sunrise", title: "Daily Anchor", sub: "Today, one step at a time" },
   companion: { icon: "person", title: "Companion", sub: "Who is this?" },
-  bridge: { icon: "sparkle", title: "MemoryBridge", sub: "Ask to see a memory" },
+  bridge: { icon: "sparkle", title: "Memory Lane", sub: "Ask to see a memory" },
   journal: { icon: "book", title: "Journal", sub: "How are you feeling?" },
   messages: { icon: "chat", title: "Messages", sub: "Notes & calls" },
   calendar: { icon: "calendar", title: "Calendar", sub: "The full day" },
