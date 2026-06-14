@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import RoleLanding, { type Section } from "./components/RoleLanding";
 import SectionHome from "./components/SectionHome";
 import CaregiverView from "./components/CaregiverView";
@@ -22,6 +22,48 @@ import {
   type VoiceProfile,
 } from "./lib/voice";
 import { usePersistentState } from "./lib/usePersistentState";
+import { Icon } from "./components/Icons";
+
+type Loc = { section: Section | null; view: string };
+const ROOT: Loc = { section: null, view: "home" };
+
+const TITLES: Record<string, string> = {
+  bridge: "Memories",
+  companion: "Who Is This?",
+  journal: "Journal",
+  messages: "Messages",
+  dailyanchor: "My Day",
+  storykeeper: "StoryKeeper",
+  memorymap: "Memory Lane",
+  voicesetup: "Voice Companion",
+};
+
+// Screens that manage their own navigation and shouldn't get the shared bar.
+const NO_TOPBAR = ["memorybook", "reality"];
+
+function TopBar({
+  title,
+  onBack,
+  onLeave,
+}: {
+  title: string;
+  onBack: () => void;
+  onLeave: () => void;
+}) {
+  return (
+    <div className="topbar-nav">
+      <button type="button" className="topbar-nav__btn" onClick={onBack}>
+        <Icon name="back" className="topbar-nav__ic" />
+        Back
+      </button>
+      <span className="topbar-nav__title">{title}</span>
+      <button type="button" className="topbar-nav__btn topbar-nav__btn--leave" onClick={onLeave}>
+        <Icon name="home" className="topbar-nav__ic" />
+        Exit
+      </button>
+    </div>
+  );
+}
 
 function StatusBar() {
   return (
@@ -54,78 +96,95 @@ function StatusBar() {
 }
 
 export default function App() {
-  const [section, setSection] = useState<Section | null>(null);
-  const [view, setView] = useState("home");
-  // Shared-account voice settings (saved across reloads).
+  // Navigation history stack — the last entry is the current screen.
+  const [stack, setStack] = useState<Loc[]>([ROOT]);
+  const cur = stack[stack.length - 1];
+
   const [voices, setVoices] = usePersistentState<VoiceProfile[]>("voices", defaultVoices);
   const [groundingVoiceId, setGroundingVoiceId] = usePersistentState(
     "groundingVoiceId",
     ANCHOR_COMPANION.id
   );
 
-  const home = () => setView("home");
   const addVoice = (v: VoiceProfile) => setVoices((prev) => [...prev, v]);
   const groundingVoice =
     voices.find((v) => v.id === groundingVoiceId) ?? ANCHOR_COMPANION;
-  const switchView = () => {
-    setSection(null);
-    setView("home");
-  };
+
+  function push(loc: Loc) {
+    setStack((s) => [...s, loc]);
+    window.history.pushState({ anchor: true }, "");
+  }
+  function popOnce() {
+    setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  }
+  // Going back routes through the browser so the phone/back gesture stays in sync.
+  function back() {
+    if (stack.length > 1) window.history.back();
+  }
+  function reset() {
+    setStack([ROOT]);
+  }
+
+  useEffect(() => {
+    const onPop = () => popOnce();
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   let cls: string;
   let body: JSX.Element;
 
-  if (!section) {
+  if (!cur.section) {
     cls = "landing";
-    body = (
-      <RoleLanding
-        onPick={(s) => {
-          setSection(s);
-          setView("home");
-        }}
-      />
-    );
-  } else if (section === "caregiver") {
+    body = <RoleLanding onPick={(s) => push({ section: s, view: "home" })} />;
+  } else if (cur.section === "caregiver") {
     cls = "caregiver";
     body = (
       <CaregiverView
         voices={voices}
         groundingVoiceId={groundingVoiceId}
         onVoiceChange={setGroundingVoiceId}
-        onSwitch={switchView}
+        onSwitch={reset}
       />
     );
   } else {
     const features: Record<string, JSX.Element> = {
-      bridge: <MemoryBridge onBack={home} />,
-      messages: <Messages onBack={home} />,
-      journal: <Journal onBack={home} />,
-      calendar: <Calendar onBack={home} />,
-      remindme: <RemindMe onBack={home} />,
-      memorymap: <MemoryMap onBack={home} />,
-      carecircle: <CareCircle onBack={home} />,
-      storykeeper: <StoryKeeper onBack={home} />,
-      safepath: <SafePath onBack={home} />,
-      companion: <Companion onBack={home} />,
-      dailyanchor: <DailyAnchor onBack={home} />,
-      memorybook: <MemoryBook onBack={home} />,
-      voicesetup: <VoiceSetup voices={voices} onAdd={addVoice} onBack={home} />,
+      bridge: <MemoryBridge onBack={back} />,
+      messages: <Messages onBack={back} />,
+      journal: <Journal onBack={back} />,
+      calendar: <Calendar onBack={back} />,
+      remindme: <RemindMe onBack={back} />,
+      memorymap: <MemoryMap onBack={back} />,
+      carecircle: <CareCircle onBack={back} />,
+      storykeeper: <StoryKeeper onBack={back} />,
+      safepath: <SafePath onBack={back} />,
+      companion: <Companion onBack={back} />,
+      dailyanchor: <DailyAnchor onBack={back} />,
+      memorybook: <MemoryBook onBack={back} />,
+      voicesetup: <VoiceSetup voices={voices} onAdd={addVoice} onBack={back} />,
       reality: (
         <RealitySupport
-          onReturn={home}
+          onReturn={back}
           voiceId={groundingVoice.id}
           voiceName={groundingVoice.name}
         />
       ),
     };
-    const isHome = view === "home";
-    cls = isHome ? section : view;
+    const isHome = cur.view === "home";
+    cls = isHome ? cur.section : cur.view;
     body = isHome ? (
-      <SectionHome section={section} onNavigate={setView} onSwitch={switchView} />
+      <SectionHome
+        section={cur.section}
+        onNavigate={(view) => push({ section: cur.section, view })}
+        onSwitch={reset}
+      />
     ) : (
-      features[view]
+      features[cur.view]
     );
   }
+
+  const isFeature = !!cur.section && cur.view !== "home";
+  const useTopBar = isFeature && !NO_TOPBAR.includes(cur.view);
 
   return (
     <div className="page">
@@ -133,8 +192,16 @@ export default function App() {
         <div className="device__screen">
           <span className="device__island" aria-hidden="true" />
           <StatusBar />
+          {useTopBar && (
+            <TopBar title={TITLES[cur.view] ?? ""} onBack={back} onLeave={reset} />
+          )}
           <div className="device__scroll">
-            <div className={`app app--${cls}`}>{body}</div>
+            <div
+              className={`app app--${cls}${useTopBar ? " app--feature" : ""} screen`}
+              key={stack.length + ":" + cls}
+            >
+              {body}
+            </div>
           </div>
           <span className="device__home" aria-hidden="true" />
         </div>

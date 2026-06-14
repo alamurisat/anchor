@@ -6153,3 +6153,137 @@ button:focus-visible {
     display: none;
   }
 }
+
+/* ============================================================
+   Navigation polish — transitions, back button, tap feedback
+   ============================================================ */
+.screen {
+  animation: screen-in 0.28s ease both;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reality Support back button (the one screen that lacked one) */
+.rs__back {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  z-index: 4;
+  width: 2.8rem;
+  height: 2.8rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--clay);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  place-items: center;
+}
+
+.rs__back .icon {
+  width: 100%;
+  height: 100%;
+}
+
+/* Snappier, native-feeling taps */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+.tile:active,
+.bigrow:active,
+.role:active,
+.reality-cta:active,
+.alert:active,
+.cg-alert:active,
+.memory:active,
+.lane-card:active,
+.bridge-card:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Shared top navigation bar (Back / Exit) on feature screens
+   ============================================================ */
+.topbar-nav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 52px;
+  padding: 0 0.6rem;
+  background: var(--cream);
+  border-bottom: 1px solid var(--border);
+  z-index: 4;
+}
+
+.topbar-nav__title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-nav__btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--clay);
+  background: none;
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+}
+
+.topbar-nav__btn:active {
+  background: var(--peach);
+}
+
+.topbar-nav__btn--leave {
+  color: var(--ink-soft);
+}
+
+.topbar-nav__ic {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.topbar-nav__btn--leave .topbar-nav__ic {
+  transform: none;
+}
+
+/* The shared bar replaces each feature's own header. */
+.app--feature .bridge__top {
+  display: none;
+}

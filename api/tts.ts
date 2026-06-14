@@ -1,7 +1,3 @@
-// Vercel serverless function: POST /api/tts
-// Generates speech with ElevenLabs and returns audio. The API key stays on
-// the server (ELEVENLABS_API_KEY) and is never exposed to the frontend.
-
 export const config = { runtime: "nodejs" };
 
 export default async function handler(req: any, res: any) {

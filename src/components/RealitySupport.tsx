@@ -60,6 +60,10 @@ export default function RealitySupport({
     <div className="rs">
       <div className="rs__glow" aria-hidden="true" />
 
+      <button type="button" className="rs__back" onClick={onReturn} aria-label="Go back">
+        <Icon name="back" className="icon" />
+      </button>
+
       <div className="rs__inner">
         <p className="rs__intro">Here’s what’s happening, right now.</p>
 
