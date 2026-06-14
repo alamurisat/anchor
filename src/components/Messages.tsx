@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   callRequestsData,
   defaultReminders,
@@ -11,6 +11,7 @@ import {
   type ScheduledCall,
 } from "../data";
 import { usePersistentState } from "../lib/usePersistentState";
+import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type MessagesProps = {
@@ -35,9 +36,8 @@ function Avatar({ person }: { person: Person }) {
 export default function Messages({ onBack, embedded }: MessagesProps) {
   const [tab, setTab] = useState<Tab>("messages");
 
-  // Read-aloud (simulated — ElevenLabs voice playback to be added later).
+  // Read-aloud via ElevenLabs.
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const playTimer = useRef<number | null>(null);
 
   // Call state.
   const [pending, setPending] = usePersistentState<CallRequest[]>("messages.pending", callRequestsData);
@@ -45,20 +45,22 @@ export default function Messages({ onBack, embedded }: MessagesProps) {
   const [reminders, setReminders] = usePersistentState<Reminder[]>("messages.reminders", remindersData);
 
   useEffect(() => {
-    return () => {
-      if (playTimer.current) window.clearTimeout(playTimer.current);
-    };
+    return () => stopVoice();
   }, []);
 
-  function readAloud(id: string) {
+  async function readAloud(id: string) {
     if (playingId === id) {
+      stopVoice();
       setPlayingId(null);
-      if (playTimer.current) window.clearTimeout(playTimer.current);
       return;
     }
+    const message = messagesData.find((m) => m.id === id);
+    if (!message) return;
     setPlayingId(id);
-    if (playTimer.current) window.clearTimeout(playTimer.current);
-    playTimer.current = window.setTimeout(() => setPlayingId(null), 3500);
+    const result = await playVoiceMessage(message.text, ANCHOR_COMPANION.id, () =>
+      setPlayingId((cur) => (cur === id ? null : cur))
+    );
+    if (!result.ok && result.reason !== "superseded") setPlayingId(null);
   }
 
   function acceptRequest(req: CallRequest) {

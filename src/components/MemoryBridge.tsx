@@ -4,13 +4,28 @@ import {
   personName,
   suggestedPrompts,
   voiceSamples,
-  type BridgeMemory,
+  type AddedMemory,
   type MediaType,
 } from "../data";
 import { Icon } from "./Icons";
+import { startRecognition } from "../lib/listen";
 
 type MemoryBridgeProps = {
   onBack: () => void;
+  added?: AddedMemory[];
+  onRemove?: (id: string) => void;
+};
+
+type Display = {
+  id: string;
+  title: string;
+  type: MediaType;
+  description: string;
+  prompt: string;
+  keywords: string[];
+  meta?: string;
+  src?: string;
+  removable?: boolean;
 };
 
 const typeIcon: Record<MediaType, "photo" | "video" | "voice"> = {
@@ -25,23 +40,23 @@ const typeLabel: Record<MediaType, string> = {
   voice: "Voice",
 };
 
-// Simulated retrieval: score each memory by how many of its keywords
-// appear in the caregiver's question.
-function search(query: string): BridgeMemory[] {
-  const q = query.toLowerCase();
-  if (!q.trim()) return bridgeMemories;
-  const scored = bridgeMemories
-    .map((m) => ({
-      m,
-      score: m.keywords.reduce((n, k) => (q.includes(k) ? n + 1 : n), 0),
-    }))
+function score(query: string, pool: Display[]): Display[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return pool;
+  const words = q.split(/\s+/).filter((w) => w.length > 1);
+  return pool
+    .map((m) => {
+      const hay = `${m.title} ${m.description} ${m.keywords.join(" ")}`.toLowerCase();
+      // A memory matches if any meaningful word from the question appears in it.
+      const score = words.reduce((n, w) => (hay.includes(w) ? n + 1 : n), 0);
+      return { m, score };
+    })
     .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.m);
+    .sort((a, b) => b.score - a.score)
+    .map((s) => s.m);
 }
 
-// Simulated "AI" narrative that introduces the matched memories.
-function narrate(query: string, results: BridgeMemory[]): string {
+function narrate(query: string, results: Display[]): string {
   if (!query.trim()) {
     return `Everything ${personName}’s family has shared, gathered in one calm place.`;
   }
@@ -58,49 +73,90 @@ function narrate(query: string, results: BridgeMemory[]): string {
 
   const count = results.length;
   const noun = count === 1 ? "memory" : "memories";
-  return `I found ${count} ${noun}${subject}. ${results[0].prompt}`;
+  return `I found ${count} ${noun}${subject}. ${results[0].prompt || ""}`.trim();
 }
 
-export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
+export default function MemoryBridge({ onBack, added = [], onRemove }: MemoryBridgeProps) {
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [results, setResults] = useState<BridgeMemory[]>(bridgeMemories);
   const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
+  const stopRecRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       if (timer.current) window.clearTimeout(timer.current);
+      stopRecRef.current?.();
     };
   }, []);
 
+  // Family uploads first, then the sample collection.
+  const pool: Display[] = [
+    ...added.map((a) => ({
+      id: a.id,
+      title: a.caption,
+      type: a.type,
+      description: "Shared by family",
+      prompt: "",
+      keywords: a.caption.toLowerCase().split(/\s+/),
+      meta: `${typeLabel[a.type]} · just shared`,
+      src: a.src,
+      removable: true,
+    })),
+    ...bridgeMemories.map((m) => ({
+      id: m.id,
+      title: m.title,
+      type: m.type,
+      description: m.description,
+      prompt: m.prompt,
+      keywords: m.keywords,
+      meta: m.meta,
+    })),
+  ];
+
+  const results = submitted ? score(query, pool) : pool;
+  const narrative = narrate(submitted ? query : "", results);
+
   function runSearch(value: string) {
     setQuery(value);
-    setResults(search(value));
     setSubmitted(true);
   }
 
   function clearSearch() {
     setQuery("");
-    setResults(bridgeMemories);
     setSubmitted(false);
+  }
+
+  function resolveHeard(text: string) {
+    setHeard(text);
+    timer.current = window.setTimeout(() => {
+      setListening(false);
+      setHeard(null);
+      runSearch(text);
+    }, 900);
+  }
+
+  function simulate() {
+    const phrase = voiceSamples[Math.floor(Math.random() * voiceSamples.length)];
+    timer.current = window.setTimeout(() => resolveHeard(phrase), 1400);
   }
 
   function startListening() {
     setListening(true);
-    const phrase = voiceSamples[Math.floor(Math.random() * voiceSamples.length)];
-    timer.current = window.setTimeout(() => {
-      setListening(false);
-      runSearch(phrase);
-    }, 2200);
+    setHeard(null);
+    if (timer.current) window.clearTimeout(timer.current);
+    stopRecRef.current = startRecognition((text) => resolveHeard(text), () => simulate());
+    if (!stopRecRef.current) simulate();
   }
 
   function cancelListening() {
     if (timer.current) window.clearTimeout(timer.current);
+    stopRecRef.current?.();
+    stopRecRef.current = null;
     setListening(false);
+    setHeard(null);
   }
-
-  const narrative = narrate(query, results);
 
   return (
     <div className="bridge">
@@ -110,7 +166,7 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
         </button>
         <div className="bridge__titles">
           <h1>MemoryBridge</h1>
-          <p>{bridgeMemories.length} memories shared by family</p>
+          <p>{pool.length} memories shared by family</p>
         </div>
       </header>
 
@@ -171,8 +227,24 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
       <div className="results">
         {results.map((m) => (
           <article key={m.id} className="media">
-            <div className="media__art" aria-hidden="true">
-              <Icon name={typeIcon[m.type]} className="media__icon" />
+            {m.removable && onRemove && (
+              <button
+                type="button"
+                className="media__remove"
+                onClick={() => onRemove(m.id)}
+                aria-label="Remove this memory"
+              >
+                <Icon name="close" className="icon" />
+              </button>
+            )}
+            <div className="media__art">
+              {m.src && m.type === "photo" ? (
+                <img className="media__img" src={m.src} alt={m.title} />
+              ) : m.src && m.type === "video" ? (
+                <video className="media__img" src={m.src} controls />
+              ) : (
+                <Icon name={typeIcon[m.type]} className="media__icon" />
+              )}
               <span className="media__type">
                 <Icon name={typeIcon[m.type]} className="icon" />
                 {typeLabel[m.type]}
@@ -180,12 +252,17 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
             </div>
             <div className="media__body">
               <h3>{m.title}</h3>
-              <p className="media__desc">{m.description}</p>
+              {m.description && <p className="media__desc">{m.description}</p>}
+              {m.src && m.type === "voice" && (
+                <audio className="media__audio" src={m.src} controls />
+              )}
               {m.meta && <span className="media__meta">{m.meta}</span>}
-              <p className="media__prompt">
-                <Icon name="sparkle" className="media__prompt-icon" />
-                {m.prompt}
-              </p>
+              {m.prompt && (
+                <p className="media__prompt">
+                  <Icon name="sparkle" className="media__prompt-icon" />
+                  {m.prompt}
+                </p>
+              )}
             </div>
           </article>
         ))}
@@ -207,8 +284,12 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
                 <Icon name="mic" className="icon" />
               </span>
             </div>
-            <p className="voice__status">Listening…</p>
-            <p className="voice__hint">Try “show pictures of her wedding”</p>
+            <p className="voice__status">{heard ? "You said" : "Listening…"}</p>
+            {heard ? (
+              <p className="voice__heard">“{heard}”</p>
+            ) : (
+              <p className="voice__hint">Try “show pictures of her wedding”</p>
+            )}
             <button type="button" className="voice__cancel" onClick={cancelListening}>
               Cancel
             </button>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   eventKindMeta,
   MISS_THRESHOLD,
@@ -6,6 +6,7 @@ import {
   type RemindTask,
 } from "../data";
 import { usePersistentState } from "../lib/usePersistentState";
+import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type RemindMeProps = {
@@ -16,18 +17,20 @@ type RemindMeProps = {
 export default function RemindMe({ onBack, embedded }: RemindMeProps) {
   const [tasks, setTasks] = usePersistentState<RemindTask[]>("remindme.tasks", remindTasks);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
-  const timer = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current);
-    };
+    return () => stopVoice();
   }, []);
 
-  function speak(id: string) {
+  async function speak(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const text = `${task.time}. ${task.title}.${task.detail ? " " + task.detail + "." : ""}`;
     setSpeakingId(id);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setSpeakingId(null), 2800);
+    const result = await playVoiceMessage(text, ANCHOR_COMPANION.id, () =>
+      setSpeakingId((cur) => (cur === id ? null : cur))
+    );
+    if (!result.ok && result.reason !== "superseded") setSpeakingId(null);
   }
 
   function complete(id: string) {

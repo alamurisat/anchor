@@ -8,11 +8,11 @@ export type VoiceProfile = {
   cloned: boolean;
 };
 
-// The built-in narrator voice (Samantha).
+// The default narrator voice.
 export const ANCHOR_COMPANION: VoiceProfile = {
   id: "uIZsnBL0YK1S5j69bAih",
-  name: "Anchor Companion",
-  relationship: "Companion",
+  name: "Samantha",
+  relationship: "Anchor companion",
   cloned: true,
 };
 
@@ -52,6 +52,24 @@ export function stopVoice() {
 }
 
 export type PlayResult = { ok: boolean; reason?: string };
+
+// Plays an already-recorded audio source (a data URL), using the same single
+// audio controller so it never overlaps with spoken messages.
+export async function playSrc(src: string, onEnded?: () => void): Promise<PlayResult> {
+  const token = ++playToken;
+  teardown();
+  try {
+    const audio = new Audio(src);
+    currentAudio = audio;
+    audio.addEventListener("ended", () => {
+      if (token === playToken) onEnded?.();
+    });
+    await audio.play();
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "play" };
+  }
+}
 
 // Requests speech from the secure endpoint and plays it. Returns ok:false on
 // any failure so callers can fall back to showing the text on screen.

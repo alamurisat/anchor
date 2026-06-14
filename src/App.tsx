@@ -21,6 +21,7 @@ import {
   defaultVoices,
   type VoiceProfile,
 } from "./lib/voice";
+import type { AddedMemory } from "./data";
 import { usePersistentState } from "./lib/usePersistentState";
 import { Icon } from "./components/Icons";
 
@@ -102,11 +103,18 @@ export default function App() {
 
   const [voices, setVoices] = usePersistentState<VoiceProfile[]>("voices", defaultVoices);
   const [groundingVoiceId, setGroundingVoiceId] = usePersistentState(
-    "groundingVoiceId",
+    "groundingVoiceId.v2",
     ANCHOR_COMPANION.id
+  );
+  const [addedMemories, setAddedMemories] = usePersistentState<AddedMemory[]>(
+    "addedMemories",
+    []
   );
 
   const addVoice = (v: VoiceProfile) => setVoices((prev) => [...prev, v]);
+  const addMemory = (m: AddedMemory) => setAddedMemories((prev) => [m, ...prev]);
+  const removeMemory = (id: string) =>
+    setAddedMemories((prev) => prev.filter((m) => m.id !== id));
   const groundingVoice =
     voices.find((v) => v.id === groundingVoiceId) ?? ANCHOR_COMPANION;
 
@@ -149,7 +157,7 @@ export default function App() {
     );
   } else {
     const features: Record<string, JSX.Element> = {
-      bridge: <MemoryBridge onBack={back} />,
+      bridge: <MemoryBridge onBack={back} added={addedMemories} onRemove={removeMemory} />,
       messages: <Messages onBack={back} />,
       journal: <Journal onBack={back} />,
       calendar: <Calendar onBack={back} />,
@@ -177,6 +185,7 @@ export default function App() {
         section={cur.section}
         onNavigate={(view) => push({ section: cur.section, view })}
         onSwitch={reset}
+        onAddMemory={addMemory}
       />
     ) : (
       features[cur.view]

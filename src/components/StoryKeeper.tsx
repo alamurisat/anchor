@@ -1,55 +1,94 @@
 import { useEffect, useRef, useState } from "react";
 import { stories, storyTopics, type Story } from "../data";
 import { usePersistentState } from "../lib/usePersistentState";
+import { ANCHOR_COMPANION, playSrc, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type StoryKeeperProps = {
   onBack: () => void;
 };
 
+function clock(s: number) {
+  const m = Math.floor(s / 60);
+  return `${m}:${(s % 60).toString().padStart(2, "0")}`;
+}
+
 export default function StoryKeeper({ onBack }: StoryKeeperProps) {
   const [archive, setArchive] = usePersistentState<Story[]>("storykeeper.archive", stories);
   const [query, setQuery] = useState("");
   const [recording, setRecording] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const recTimer = useRef<number | null>(null);
-  const playTimer = useRef<number | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
-      if (recTimer.current) window.clearTimeout(recTimer.current);
-      if (playTimer.current) window.clearTimeout(playTimer.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      stopVoice();
     };
   }, []);
 
-  function recordAnswer(topicId: string, question: string) {
-    setRecording(question);
-    if (recTimer.current) window.clearTimeout(recTimer.current);
-    recTimer.current = window.setTimeout(() => {
-      setRecording(null);
-      setArchive((list) => [
-        {
-          id: `st-${Date.now()}`,
-          topicId,
-          question,
-          kind: "voice",
-          duration: "0:36",
-          date: "Today",
-        },
-        ...list,
-      ]);
-    }, 2600);
+  function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
   }
 
-  function togglePlay(id: string) {
-    if (playingId === id) {
-      setPlayingId(null);
-      if (playTimer.current) window.clearTimeout(playTimer.current);
+  async function recordAnswer(topicId: string, question: string) {
+    // Tapping the same question again stops the recording.
+    if (recording === question) {
+      recorderRef.current?.stop();
       return;
     }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        const src = await blobToDataUrl(blob);
+        const secs = Math.max(1, Math.round((Date.now() - startRef.current) / 1000));
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        setRecording(null);
+        setArchive((list) => [
+          { id: `st-${Date.now()}`, topicId, question, kind: "voice", duration: clock(secs), date: "Today", src },
+          ...list,
+        ]);
+      };
+      recorder.start();
+      startRef.current = Date.now();
+      setRecording(question);
+    } catch {
+      setRecording(null);
+    }
+  }
+
+  async function togglePlay(id: string) {
+    if (playingId === id) {
+      stopVoice();
+      setPlayingId(null);
+      return;
+    }
+    const story = archive.find((s) => s.id === id);
+    if (!story) return;
     setPlayingId(id);
-    if (playTimer.current) window.clearTimeout(playTimer.current);
-    playTimer.current = window.setTimeout(() => setPlayingId(null), 3500);
+    const done = () => setPlayingId((cur) => (cur === id ? null : cur));
+    // Play the real recording, or read the question aloud for the sample stories.
+    const result = story.src
+      ? await playSrc(story.src, done)
+      : await playVoiceMessage(story.question, ANCHOR_COMPANION.id, done);
+    if (!result.ok && result.reason !== "superseded") setPlayingId(null);
   }
 
   const q = query.trim().toLowerCase();

@@ -73,6 +73,10 @@ export default function MemoryBook({ onBack }: MemoryBookProps) {
     setView("home");
   }
 
+  function removeMemory(id: string) {
+    setMemories((list) => list.filter((m) => m.id !== id));
+  }
+
   const dateLabel = (m: SharedMemory) =>
     [m.day, m.month, m.year].filter(Boolean).join(" ");
 
@@ -310,6 +314,14 @@ export default function MemoryBook({ onBack }: MemoryBookProps) {
           <div className="mb-list">
             {memories.map((m) => (
               <article key={m.id} className="mb-memory">
+                <button
+                  type="button"
+                  className="mb-memory__remove"
+                  onClick={() => removeMemory(m.id)}
+                  aria-label="Remove this memory"
+                >
+                  <Icon name="close" className="icon" />
+                </button>
                 <h2 className="mb-memory__title">{m.title}</h2>
                 {dateLabel(m) && (
                   <span className="mb-memory__date">{dateLabel(m)}</span>

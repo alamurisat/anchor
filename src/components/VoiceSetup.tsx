@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { personName } from "../data";
-import type { VoiceProfile } from "../lib/voice";
+import { playVoiceMessage, stopVoice, type VoiceProfile } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type VoiceSetupProps = {
@@ -24,13 +24,29 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [captured, setCaptured] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (timer.current) window.clearInterval(timer.current);
+      stopVoice();
     };
   }, []);
+
+  async function preview(voice: VoiceProfile) {
+    if (previewId === voice.id) {
+      stopVoice();
+      setPreviewId(null);
+      return;
+    }
+    const sample = `Hello ${personName}, it's ${voice.name}. It's so good to hear from you.`;
+    setPreviewId(voice.id);
+    const result = await playVoiceMessage(sample, voice.id, () =>
+      setPreviewId((cur) => (cur === voice.id ? null : cur))
+    );
+    if (!result.ok) setPreviewId(null);
+  }
 
   function stopRecording() {
     if (timer.current) window.clearInterval(timer.current);
@@ -176,9 +192,19 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
               <span className="vs-voice__name">{v.name}</span>
               <span className="vs-voice__rel">{v.relationship}</span>
             </span>
-            <span className={`vs-voice__tag ${v.cloned ? "is-ready" : ""}`}>
-              {v.cloned ? "Ready" : "Processing"}
-            </span>
+            {v.cloned ? (
+              <button
+                type="button"
+                className={`vs-voice__play ${previewId === v.id ? "is-on" : ""}`}
+                onClick={() => preview(v)}
+                aria-label={`Hear ${v.name}'s voice`}
+              >
+                <Icon name={previewId === v.id ? "close" : "play"} className="icon" />
+                {previewId === v.id ? "Playing" : "Hear"}
+              </button>
+            ) : (
+              <span className="vs-voice__tag">Processing</span>
+            )}
           </div>
         ))}
       </section>

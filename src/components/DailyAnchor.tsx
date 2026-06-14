@@ -1,33 +1,81 @@
 import { useEffect, useRef, useState } from "react";
 import { dailyAnchors } from "../data";
+import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type DailyAnchorProps = {
   onBack: () => void;
 };
 
+const LAST = dailyAnchors.length - 1;
+
 export default function DailyAnchor({ onBack }: DailyAnchorProps) {
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
-  const speakTimer = useRef<number | null>(null);
+  const [playingAll, setPlayingAll] = useState(false);
+  const playingAllRef = useRef(false);
+  const advanceTimer = useRef<number | null>(null);
 
   const current = dailyAnchors[index];
 
   useEffect(() => {
     return () => {
-      if (speakTimer.current) window.clearTimeout(speakTimer.current);
+      playingAllRef.current = false;
+      if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+      stopVoice();
     };
   }, []);
 
-  function speak() {
+  // Speak item `i`; if we're in story mode, move to the next when it finishes.
+  async function speakAt(i: number) {
+    setIndex(i);
     setSpeaking(true);
-    if (speakTimer.current) window.clearTimeout(speakTimer.current);
-    speakTimer.current = window.setTimeout(() => setSpeaking(false), 3500);
+
+    const advance = () => {
+      if (!playingAllRef.current) return;
+      if (i < LAST) {
+        speakAt(i + 1);
+      } else {
+        playingAllRef.current = false;
+        setPlayingAll(false);
+      }
+    };
+
+    const result = await playVoiceMessage(dailyAnchors[i].message, ANCHOR_COMPANION.id, () => {
+      setSpeaking(false);
+      advance();
+    });
+
+    if (!result.ok && result.reason !== "superseded") {
+      setSpeaking(false);
+      // No audio available — still move along like a story after a gentle pause.
+      if (playingAllRef.current) {
+        if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+        advanceTimer.current = window.setTimeout(advance, 2200);
+      }
+    }
+  }
+
+  function speak() {
+    speakAt(index);
+  }
+
+  function startStory() {
+    playingAllRef.current = true;
+    setPlayingAll(true);
+    speakAt(index);
+  }
+
+  function stopStory() {
+    playingAllRef.current = false;
+    setPlayingAll(false);
+    if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+    stopVoice();
+    setSpeaking(false);
   }
 
   function go(next: number) {
-    setSpeaking(false);
-    if (speakTimer.current) window.clearTimeout(speakTimer.current);
+    stopStory();
     setIndex((next + dailyAnchors.length) % dailyAnchors.length);
   }
 
@@ -72,6 +120,15 @@ export default function DailyAnchor({ onBack }: DailyAnchorProps) {
           )}
         </button>
       </section>
+
+      <button
+        type="button"
+        className={`da-play ${playingAll ? "is-on" : ""}`}
+        onClick={playingAll ? stopStory : startStory}
+      >
+        <Icon name={playingAll ? "close" : "play"} className="da-play__icon" />
+        {playingAll ? "Stop" : "Play the day"}
+      </button>
 
       <div className="da-nav">
         <button type="button" className="da-nav__btn" onClick={() => go(index - 1)}>

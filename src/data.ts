@@ -259,6 +259,14 @@ export const suggestedPrompts: BridgePrompt[] = [
   { label: "Sunday dinners", query: "find family dinners" },
 ];
 
+// A memory a family member actually uploads (stored as a data URL).
+export type AddedMemory = {
+  id: string;
+  type: MediaType;
+  caption: string;
+  src: string;
+};
+
 // Sample phrases the simulated voice mode "hears".
 export const voiceSamples: string[] = [
   "Show pictures of her wedding",
@@ -415,6 +423,7 @@ export type JournalEntry = {
   kind: "text" | "voice";
   text?: string;
   duration?: string;
+  src?: string;
 };
 
 export const journalEntries: JournalEntry[] = [
@@ -431,8 +440,8 @@ export const journalEntries: JournalEntry[] = [
     date: "Yesterday",
     time: "7:15 PM",
     moodId: "calm",
-    kind: "voice",
-    duration: "0:34",
+    kind: "text",
+    text: "A calm evening. The garden looked lovely in the last of the light.",
   },
   {
     id: "j3",
@@ -717,6 +726,7 @@ export type Story = {
   text?: string;
   duration?: string;
   date: string;
+  src?: string;
 };
 
 export const stories: Story[] = [

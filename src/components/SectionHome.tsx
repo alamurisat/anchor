@@ -16,6 +16,7 @@ type SectionHomeProps = {
   section: Section;
   onNavigate: (view: string) => void;
   onSwitch: () => void;
+  onAddMemory: (memory: import("../data").AddedMemory) => void;
 };
 
 type TileDef = { view: string; icon: IconName; title: string; sub: string };
@@ -90,7 +91,12 @@ function caregiverAlerts() {
   return [...confusion, ...fromTasks, ...fromReminders];
 }
 
-export default function SectionHome({ section, onNavigate, onSwitch }: SectionHomeProps) {
+export default function SectionHome({
+  section,
+  onNavigate,
+  onSwitch,
+  onAddMemory,
+}: SectionHomeProps) {
   const tiles = tilesFor(section);
   const alerts = section === "caregiver" ? caregiverAlerts() : [];
 
@@ -185,7 +191,7 @@ export default function SectionHome({ section, onNavigate, onSwitch }: SectionHo
         </section>
       )}
 
-      {section === "family" && <AddMemoryCard />}
+      {section === "family" && <AddMemoryCard onAdd={onAddMemory} />}
 
       {section === "patient" ? (
         <nav className="stack" aria-label="Things you can do">

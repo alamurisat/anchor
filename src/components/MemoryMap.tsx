@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { mapPlaces } from "../data";
+import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type MemoryMapProps = {
@@ -8,23 +9,24 @@ type MemoryMapProps = {
 
 export default function MemoryMap({ onBack }: MemoryMapProps) {
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const timer = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current);
-    };
+    return () => stopVoice();
   }, []);
 
-  function togglePlay(id: string) {
+  async function togglePlay(id: string) {
     if (playingId === id) {
+      stopVoice();
       setPlayingId(null);
-      if (timer.current) window.clearTimeout(timer.current);
       return;
     }
+    const place = mapPlaces.find((p) => p.id === id);
+    if (!place) return;
     setPlayingId(id);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setPlayingId(null), 3500);
+    const result = await playVoiceMessage(place.story, ANCHOR_COMPANION.id, () =>
+      setPlayingId((cur) => (cur === id ? null : cur))
+    );
+    if (!result.ok && result.reason !== "superseded") setPlayingId(null);
   }
 
   return (

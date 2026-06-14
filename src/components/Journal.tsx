@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { journalEntries, moods, type JournalEntry } from "../data";
 import { usePersistentState } from "../lib/usePersistentState";
+import { playSrc, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type JournalProps = {
@@ -33,18 +34,30 @@ export default function Journal({ onBack }: JournalProps) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const recTimer = useRef<number | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const playTimer = useRef<number | null>(null);
 
   const moodById = (id: string) => moods.find((m) => m.id === id) ?? moods[0];
 
   useEffect(() => {
     return () => {
       if (recTimer.current) window.clearInterval(recTimer.current);
-      if (playTimer.current) window.clearTimeout(playTimer.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      stopVoice();
     };
   }, []);
+
+  function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
 
   function saveText() {
     const text = draft.trim();
@@ -63,40 +76,64 @@ export default function Journal({ onBack }: JournalProps) {
     setDraft("");
   }
 
-  function startRecording() {
-    setRecording(true);
-    setElapsed(0);
-    recTimer.current = window.setInterval(() => {
-      setElapsed((e) => e + 1);
-    }, 1000);
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        const src = await blobToDataUrl(blob);
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        setEntries((list) => [
+          {
+            id: `j-${Date.now()}`,
+            date: "Today",
+            time: nowTime(),
+            moodId,
+            kind: "voice",
+            duration: formatClock(Math.max(elapsed, 1)),
+            src,
+          },
+          ...list,
+        ]);
+        setElapsed(0);
+      };
+      recorder.start();
+      setElapsed(0);
+      setRecording(true);
+      recTimer.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+    } catch {
+      // No mic / permission denied — nothing recorded.
+      setRecording(false);
+    }
   }
 
   function stopRecording() {
     if (recTimer.current) window.clearInterval(recTimer.current);
     setRecording(false);
-    setEntries((list) => [
-      {
-        id: `j-${Date.now()}`,
-        date: "Today",
-        time: nowTime(),
-        moodId,
-        kind: "voice",
-        duration: formatClock(Math.max(elapsed, 1)),
-      },
-      ...list,
-    ]);
-    setElapsed(0);
+    recorderRef.current?.stop();
   }
 
-  function togglePlay(id: string) {
+  async function togglePlay(id: string) {
     if (playingId === id) {
+      stopVoice();
       setPlayingId(null);
-      if (playTimer.current) window.clearTimeout(playTimer.current);
       return;
     }
+    const entry = entries.find((e) => e.id === id);
+    if (!entry?.src) return;
     setPlayingId(id);
-    if (playTimer.current) window.clearTimeout(playTimer.current);
-    playTimer.current = window.setTimeout(() => setPlayingId(null), 3500);
+    const result = await playSrc(entry.src, () =>
+      setPlayingId((cur) => (cur === id ? null : cur))
+    );
+    if (!result.ok) setPlayingId(null);
   }
 
   return (

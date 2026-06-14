@@ -7,6 +7,8 @@ import {
   type CompanionPerson,
 } from "../data";
 import { Icon } from "./Icons";
+import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
+import { startRecognition } from "../lib/listen";
 
 type CompanionProps = {
   onBack: () => void;
@@ -28,56 +30,109 @@ export default function Companion({ onBack }: CompanionProps) {
   const [facet, setFacet] = useState<CompanionFacet>("identity");
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
   const listenTimer = useRef<number | null>(null);
-  const speakTimer = useRef<number | null>(null);
+  const stopRecRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       if (listenTimer.current) window.clearTimeout(listenTimer.current);
-      if (speakTimer.current) window.clearTimeout(speakTimer.current);
+      stopRecRef.current?.();
+      stopVoice();
     };
   }, []);
 
+  // Interpret what the user said and respond in voice.
+  function handleSpeech(text: string) {
+    const t = text.toLowerCase();
+    const said = (...words: string[]) => words.some((w) => t.includes(w));
+
+    let next: CompanionFacet = "identity";
+    if (said("where", "meet", "met")) next = "met";
+    else if (said("tell me", "about", "more")) next = "about";
+    else if (said("who")) next = "identity";
+
+    // If a person is named, switch to them.
+    const who = companionPeople.find(
+      (p) =>
+        t.includes(p.name.toLowerCase()) ||
+        t.includes(p.relation.toLowerCase().replace("your ", ""))
+    );
+    if (who) {
+      setPerson(who);
+      setFacet(next);
+      speak(answerFor(who, next));
+    } else {
+      ask(next);
+    }
+  }
+
   const answer = answerFor(person, facet);
 
-  function speak() {
+  async function speak(text: string) {
     setSpeaking(true);
-    if (speakTimer.current) window.clearTimeout(speakTimer.current);
-    speakTimer.current = window.setTimeout(() => setSpeaking(false), 4000);
+    const result = await playVoiceMessage(text, ANCHOR_COMPANION.id, () =>
+      setSpeaking(false)
+    );
+    if (!result.ok && result.reason !== "superseded") setSpeaking(false);
   }
 
   function stopSpeak() {
+    stopVoice();
     setSpeaking(false);
-    if (speakTimer.current) window.clearTimeout(speakTimer.current);
   }
 
   function ask(next: CompanionFacet) {
     setFacet(next);
-    speak();
+    speak(answerFor(person, next));
   }
 
   function choosePerson(p: CompanionPerson) {
     setPerson(p);
     setFacet("identity");
-    speak();
+    speak(answerFor(p, "identity"));
+  }
+
+  function simulate() {
+    const sample =
+      companionVoiceSamples[Math.floor(Math.random() * companionVoiceSamples.length)];
+    listenTimer.current = window.setTimeout(() => {
+      setHeard(sample.phrase);
+      listenTimer.current = window.setTimeout(() => {
+        setListening(false);
+        setHeard(null);
+        ask(sample.facet);
+      }, 900);
+    }, 1400);
   }
 
   function startListening() {
     setListening(true);
+    setHeard(null);
     if (listenTimer.current) window.clearTimeout(listenTimer.current);
-    const sample =
-      companionVoiceSamples[
-        Math.floor(Math.random() * companionVoiceSamples.length)
-      ];
-    listenTimer.current = window.setTimeout(() => {
-      setListening(false);
-      ask(sample.facet);
-    }, 2200);
+
+    // Real speech recognition; gracefully simulate if unsupported / denied.
+    stopRecRef.current = startRecognition(
+      (text) => {
+        setHeard(text);
+        listenTimer.current = window.setTimeout(() => {
+          setListening(false);
+          setHeard(null);
+          handleSpeech(text);
+        }, 900);
+      },
+      () => simulate()
+    );
+
+    if (!stopRecRef.current) simulate();
   }
 
   function cancelListening() {
     if (listenTimer.current) window.clearTimeout(listenTimer.current);
+    stopRecRef.current?.();
+    stopRecRef.current = null;
     setListening(false);
+    setHeard(null);
   }
 
   return (
@@ -124,7 +179,7 @@ export default function Companion({ onBack }: CompanionProps) {
         <button
           type="button"
           className={`spotlight__speak ${speaking ? "is-on" : ""}`}
-          onClick={() => (speaking ? stopSpeak() : speak())}
+          onClick={() => (speaking ? stopSpeak() : speak(answer))}
         >
           <Icon name={speaking ? "close" : "volume"} className="spotlight__speak-icon" />
           {speaking ? (
@@ -183,8 +238,12 @@ export default function Companion({ onBack }: CompanionProps) {
                 <Icon name="mic" className="icon" />
               </span>
             </div>
-            <p className="voice__status">Listening…</p>
-            <p className="voice__hint">Try “Where did I meet them?”</p>
+            <p className="voice__status">{heard ? "You said" : "Listening…"}</p>
+            {heard ? (
+              <p className="voice__heard">“{heard}”</p>
+            ) : (
+              <p className="voice__hint">Try “Where did I meet them?”</p>
+            )}
             <button type="button" className="voice__cancel" onClick={cancelListening}>
               Cancel
             </button>
