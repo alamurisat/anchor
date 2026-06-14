@@ -477,18 +477,19 @@ export const eventKindMeta: Record<
 
 export type WeekDay = {
   label: string;
+  name: string;
   date: number;
   today: boolean;
 };
 
 export const weekDays: WeekDay[] = [
-  { label: "M", date: 8, today: false },
-  { label: "T", date: 9, today: true },
-  { label: "W", date: 10, today: false },
-  { label: "T", date: 11, today: false },
-  { label: "F", date: 12, today: false },
-  { label: "S", date: 13, today: false },
-  { label: "S", date: 14, today: false },
+  { label: "M", name: "Monday", date: 8, today: false },
+  { label: "T", name: "Tuesday", date: 9, today: true },
+  { label: "W", name: "Wednesday", date: 10, today: false },
+  { label: "T", name: "Thursday", date: 11, today: false },
+  { label: "F", name: "Friday", date: 12, today: false },
+  { label: "S", name: "Saturday", date: 13, today: false },
+  { label: "S", name: "Sunday", date: 14, today: false },
 ];
 
 export const calendarEvents: CalendarEvent[] = [
@@ -525,6 +526,43 @@ export const calendarEvents: CalendarEvent[] = [
     done: false,
   },
 ];
+
+// The recurring daily routine, reused to build each day's schedule.
+function dayRoutine(prefix: string, extras: Omit<CalendarEvent, "id" | "done">[]): CalendarEvent[] {
+  const base: Omit<CalendarEvent, "id" | "done">[] = [
+    { time: "8:00 AM", title: "Breakfast", detail: "Oatmeal & coffee", kind: "meal" },
+    { time: "8:30 AM", title: "Morning medication", detail: "Donepezil · 1 tablet", kind: "medication" },
+    { time: "10:00 AM", title: "Glass of water", kind: "hydration" },
+    { time: "12:30 PM", title: "Lunch", kind: "meal" },
+    ...extras,
+    { time: "1:30 PM", title: "Glass of water", kind: "hydration" },
+    { time: "6:00 PM", title: "Dinner", detail: "Family meal", kind: "meal" },
+    { time: "8:00 PM", title: "Evening medication", detail: "Memantine · 1 tablet", kind: "medication" },
+  ];
+  // Keep the day sorted by time of day.
+  const order = (t: string) => {
+    const [hm, ap] = t.split(" ");
+    let [h, m] = hm.split(":").map(Number);
+    if (ap === "PM" && h !== 12) h += 12;
+    if (ap === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  };
+  return base
+    .sort((a, b) => order(a.time) - order(b.time))
+    .map((e, i) => ({ id: `${prefix}-${i}`, done: false, ...e }));
+}
+
+// Each day of the week has its own schedule. Today (Tuesday, the 9th) keeps the
+// detailed list above; other days are built from the routine plus a highlight.
+export const eventsByDay: Record<number, CalendarEvent[]> = {
+  8: dayRoutine("mon", [{ time: "2:00 PM", title: "Hair appointment", detail: "With Mai", kind: "appointment" }]),
+  9: calendarEvents,
+  10: dayRoutine("wed", [{ time: "4:00 PM", title: "Call with Jack", detail: "Your grandson", kind: "call" }]),
+  11: dayRoutine("thu", [{ time: "11:00 AM", title: "Physiotherapy visit", detail: "Gentle exercises", kind: "appointment" }]),
+  12: dayRoutine("fri", [{ time: "6:30 PM", title: "Call with Sarah", detail: "Your daughter", kind: "call" }]),
+  13: dayRoutine("sat", [{ time: "3:00 PM", title: "Family visit", detail: "Sarah & the children", kind: "appointment" }]),
+  14: dayRoutine("sun", [{ time: "5:00 PM", title: "Sunday dinner", detail: "The whole family", kind: "meal" }]),
+};
 
 /* ============================================================
    RemindMe — spoken reminders with family escalation

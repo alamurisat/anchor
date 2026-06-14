@@ -5980,3 +5980,176 @@ button:focus-visible {
 .home--patient .home__footnote {
   font-size: 1rem;
 }
+
+/* ============================================================
+   Calendar — selectable week days
+   ============================================================ */
+.week__day {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  background: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.week__day:hover {
+  background: var(--peach);
+}
+
+/* Selected (non-today) day gets a ring; today keeps its filled style. */
+.week__day.is-selected:not(.is-today) {
+  background: var(--peach);
+  box-shadow: inset 0 0 0 2px var(--orange);
+}
+
+.week__day.is-selected:not(.is-today) .week__label,
+.week__day.is-selected:not(.is-today) .week__date {
+  color: var(--clay);
+}
+
+.cal-dayhead {
+  margin: 0;
+  padding: 0 0.35rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.cal-empty {
+  list-style: none;
+  text-align: center;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding: 1.5rem 0;
+}
+
+/* ============================================================
+   iPhone device shell
+   ============================================================ */
+.page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(120% 100% at 50% 0%, #efe9df, #ddd3c4);
+}
+
+.device {
+  position: relative;
+  width: 390px;
+  max-width: 100%;
+  height: min(844px, calc(100dvh - 48px));
+  background: #0a0a0b;
+  border-radius: 54px;
+  padding: 6px;
+  box-shadow:
+    0 30px 70px rgba(40, 30, 20, 0.35),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.device__screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 48px;
+  overflow: hidden;
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+  /* Becomes the containing block so fixed overlays stay inside the phone. */
+  transform: translateZ(0);
+}
+
+.device__island {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92px;
+  height: 26px;
+  background: #000;
+  border-radius: 999px;
+  z-index: 8;
+}
+
+.statusbar {
+  flex: 0 0 auto;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.7rem 0 1.9rem;
+  color: var(--ink);
+  z-index: 5;
+}
+
+.statusbar__time {
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.statusbar__icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sb-ic {
+  height: 0.72rem;
+  width: auto;
+  color: var(--ink);
+  fill: currentColor;
+}
+
+.sb-ic--batt {
+  height: 0.82rem;
+}
+
+.device__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Inside the phone, screens fill the scroll area rather than the whole viewport. */
+.device .app,
+.device .landing {
+  min-height: 100%;
+}
+
+.device__home {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(20, 18, 16, 0.32);
+  z-index: 7;
+}
+
+/* On real phones, drop the faux frame and go full-screen. */
+@media (max-width: 460px) {
+  .page {
+    padding: 0;
+    background: var(--cream);
+  }
+  .device {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .device__screen {
+    border-radius: 0;
+  }
+  .device__island,
+  .device__home,
+  .statusbar {
+    display: none;
+  }
+}
