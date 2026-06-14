@@ -7,3 +7,7 @@ dist-ssr
 !.vscode/extensions.json
 .claude
 tsconfig.tsbuildinfo
+.env
+.env.*
+!.env.example
+.vercel

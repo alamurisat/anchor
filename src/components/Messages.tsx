@@ -10,6 +10,7 @@ import {
   type Reminder,
   type ScheduledCall,
 } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type MessagesProps = {
@@ -39,9 +40,9 @@ export default function Messages({ onBack, embedded }: MessagesProps) {
   const playTimer = useRef<number | null>(null);
 
   // Call state.
-  const [pending, setPending] = useState<CallRequest[]>(callRequestsData);
-  const [scheduled, setScheduled] = useState<ScheduledCall[]>(scheduledCallsData);
-  const [reminders, setReminders] = useState<Reminder[]>(remindersData);
+  const [pending, setPending] = usePersistentState<CallRequest[]>("messages.pending", callRequestsData);
+  const [scheduled, setScheduled] = usePersistentState<ScheduledCall[]>("messages.scheduled", scheduledCallsData);
+  const [reminders, setReminders] = usePersistentState<Reminder[]>("messages.reminders", remindersData);
 
   useEffect(() => {
     return () => {

@@ -8,6 +8,7 @@ import {
   type CareCategory,
   type CareNote,
 } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type CareCircleProps = {
@@ -22,7 +23,7 @@ const categories: { id: CareCategory; label: string }[] = [
 ];
 
 export default function CareCircle({ onBack, embedded }: CareCircleProps) {
-  const [log, setLog] = useState<CareNote[]>(careLog);
+  const [log, setLog] = usePersistentState<CareNote[]>("carecircle.log", careLog);
   const [category, setCategory] = useState<CareCategory>("mood");
   const [draft, setDraft] = useState("");
 

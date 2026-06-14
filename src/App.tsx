@@ -15,12 +15,28 @@ import SafePath from "./components/SafePath";
 import Companion from "./components/Companion";
 import DailyAnchor from "./components/DailyAnchor";
 import MemoryBook from "./components/MemoryBook";
+import VoiceSetup from "./components/VoiceSetup";
+import {
+  ANCHOR_COMPANION,
+  defaultVoices,
+  type VoiceProfile,
+} from "./lib/voice";
+import { usePersistentState } from "./lib/usePersistentState";
 
 export default function App() {
   const [section, setSection] = useState<Section | null>(null);
   const [view, setView] = useState("home");
+  // Shared-account voice settings (saved across reloads).
+  const [voices, setVoices] = usePersistentState<VoiceProfile[]>("voices", defaultVoices);
+  const [groundingVoiceId, setGroundingVoiceId] = usePersistentState(
+    "groundingVoiceId",
+    ANCHOR_COMPANION.id
+  );
 
   const home = () => setView("home");
+  const addVoice = (v: VoiceProfile) => setVoices((prev) => [...prev, v]);
+  const groundingVoice =
+    voices.find((v) => v.id === groundingVoiceId) ?? ANCHOR_COMPANION;
 
   if (!section) {
     return (
@@ -40,6 +56,9 @@ export default function App() {
     return (
       <div className="app app--caregiver">
         <CaregiverView
+          voices={voices}
+          groundingVoiceId={groundingVoiceId}
+          onVoiceChange={setGroundingVoiceId}
           onSwitch={() => {
             setSection(null);
             setView("home");
@@ -62,7 +81,14 @@ export default function App() {
     companion: <Companion onBack={home} />,
     dailyanchor: <DailyAnchor onBack={home} />,
     memorybook: <MemoryBook onBack={home} />,
-    reality: <RealitySupport onReturn={home} />,
+    voicesetup: <VoiceSetup voices={voices} onAdd={addVoice} onBack={home} />,
+    reality: (
+      <RealitySupport
+        onReturn={home}
+        voiceId={groundingVoice.id}
+        voiceName={groundingVoice.name}
+      />
+    ),
   };
 
   const isHome = view === "home";

@@ -1,0 +1,101 @@
+import { personName, todayLabel } from "../data";
+
+export type VoiceProfile = {
+  id: string; // ElevenLabs voiceId
+  name: string;
+  relationship: string;
+  // Family voices start un-cloned (placeholder id) until a real recording is processed.
+  cloned: boolean;
+};
+
+// The built-in narrator voice (Samantha).
+export const ANCHOR_COMPANION: VoiceProfile = {
+  id: "uIZsnBL0YK1S5j69bAih",
+  name: "Anchor Companion",
+  relationship: "Companion",
+  cloned: true,
+};
+
+export const defaultVoices: VoiceProfile[] = [
+  ANCHOR_COMPANION,
+  // Mapped to warm, reassuring ElevenLabs voices on the account.
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", relationship: "Daughter", cloned: true },
+  { id: "JBFqnCBsd6RMkjVDRZzb", name: "John", relationship: "Son", cloned: true },
+];
+
+// A warm, plain-language grounding message assembled from the current context.
+export function buildGroundingMessage(): string {
+  return `Hi ${personName}. You are safe at home right now. It is ${todayLabel}. Sarah will be visiting later today. Everything is okay.`;
+}
+
+let currentAudio: HTMLAudioElement | null = null;
+let currentUrl: string | null = null;
+// Every play/stop bumps this. Any in-flight request whose token is stale is
+// discarded, so only one voice is ever heard (no overlapping audio).
+let playToken = 0;
+
+function teardown() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.src = "";
+    currentAudio = null;
+  }
+  if (currentUrl) {
+    URL.revokeObjectURL(currentUrl);
+    currentUrl = null;
+  }
+}
+
+export function stopVoice() {
+  playToken++;
+  teardown();
+}
+
+export type PlayResult = { ok: boolean; reason?: string };
+
+// Requests speech from the secure endpoint and plays it. Returns ok:false on
+// any failure so callers can fall back to showing the text on screen.
+export async function playVoiceMessage(
+  text: string,
+  voiceId: string,
+  onEnded?: () => void
+): Promise<PlayResult> {
+  const token = ++playToken; // claim the latest play
+  teardown(); // stop whatever is playing now, without invalidating this token
+
+  try {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text, voiceId }),
+    });
+
+    if (token !== playToken) return { ok: false, reason: "superseded" };
+
+    if (!res.ok) {
+      let reason = "tts_failed";
+      try {
+        reason = (await res.json()).error ?? reason;
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, reason };
+    }
+
+    const blob = await res.blob();
+    if (token !== playToken) return { ok: false, reason: "superseded" };
+    if (!blob.type.startsWith("audio")) return { ok: false, reason: "not_audio" };
+
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    currentUrl = url;
+    currentAudio = audio;
+    audio.addEventListener("ended", () => {
+      if (token === playToken) onEnded?.();
+    });
+    await audio.play();
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}

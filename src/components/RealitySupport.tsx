@@ -1,44 +1,60 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { realityQuestions, realitySteps } from "../data";
+import { buildGroundingMessage, playVoiceMessage, stopVoice } from "../lib/voice";
 import { Icon } from "./Icons";
 
 type RealitySupportProps = {
   onReturn: () => void;
+  voiceId: string;
+  voiceName?: string;
 };
 
-export default function RealitySupport({ onReturn }: RealitySupportProps) {
+export default function RealitySupport({
+  onReturn,
+  voiceId,
+  voiceName = "Anchor Companion",
+}: RealitySupportProps) {
   const [index, setIndex] = useState(0);
-  const [speaking, setSpeaking] = useState(false);
-  const speakTimer = useRef<number | null>(null);
+  // Which line is currently being spoken: "grounding" or a step id, else null.
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
+  const [voiceFailed, setVoiceFailed] = useState(false);
 
   const step = realitySteps[index];
   const isLast = index === realitySteps.length - 1;
+  const groundingMessage = buildGroundingMessage();
 
-  // The calming voice explanation plays automatically as each fact appears.
+  async function play(key: string, text: string) {
+    setPlayingKey(key);
+    const result = await playVoiceMessage(text, voiceId, () =>
+      setPlayingKey((k) => (k === key ? null : k))
+    );
+    if (result.ok) {
+      setVoiceFailed(false);
+    } else if (result.reason !== "superseded") {
+      // A real failure (not just a newer request taking over).
+      setPlayingKey(null);
+      setVoiceFailed(true);
+    }
+  }
+
+  function stop() {
+    stopVoice();
+    setPlayingKey(null);
+  }
+
+  // Auto-play the grounding message when Anchor Mode opens.
   useEffect(() => {
-    setSpeaking(true);
-    if (speakTimer.current) window.clearTimeout(speakTimer.current);
-    speakTimer.current = window.setTimeout(() => setSpeaking(false), 3600);
-    return () => {
-      if (speakTimer.current) window.clearTimeout(speakTimer.current);
-    };
-  }, [index]);
+    play("grounding", groundingMessage);
+    return () => stopVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function goTo(id: string) {
     const i = realitySteps.findIndex((s) => s.id === id);
     if (i >= 0) setIndex(i);
   }
 
-  function replay() {
-    if (index === 0) {
-      // Re-trigger the voice even if already on the first step.
-      setSpeaking(true);
-      if (speakTimer.current) window.clearTimeout(speakTimer.current);
-      speakTimer.current = window.setTimeout(() => setSpeaking(false), 3600);
-    } else {
-      setIndex(0);
-    }
-  }
+  const groundingPlaying = playingKey === "grounding";
 
   return (
     <div className="rs">
@@ -46,6 +62,34 @@ export default function RealitySupport({ onReturn }: RealitySupportProps) {
 
       <div className="rs__inner">
         <p className="rs__intro">Here’s what’s happening, right now.</p>
+
+        {/* Spoken grounding message (ElevenLabs voice) with transcript */}
+        <section className="ground-voice" aria-label="Grounding message">
+          <p className="ground-voice__transcript">{groundingMessage}</p>
+          <div className="ground-voice__controls">
+            <button
+              type="button"
+              className={`ground-voice__btn ${groundingPlaying ? "is-on" : ""}`}
+              onClick={() => play("grounding", groundingMessage)}
+            >
+              <Icon name="volume" className="ground-voice__icon" />
+              {groundingPlaying ? "Playing…" : "Play again"}
+            </button>
+            <button
+              type="button"
+              className="ground-voice__btn ground-voice__btn--stop"
+              onClick={stop}
+            >
+              <Icon name="close" className="ground-voice__icon" />
+              Stop audio
+            </button>
+          </div>
+          <p className="ground-voice__by">
+            {voiceFailed
+              ? "Reading the words here for you."
+              : `In ${voiceName}’s voice`}
+          </p>
+        </section>
 
         <div className={`rs__visual ${step.breath ? "rs__visual--breath" : ""}`}>
           {step.breath ? (
@@ -68,11 +112,11 @@ export default function RealitySupport({ onReturn }: RealitySupportProps) {
 
           <button
             type="button"
-            className={`rs__speak ${speaking ? "is-on" : ""}`}
-            onClick={replay}
+            className={`rs__speak ${playingKey === step.id ? "is-on" : ""}`}
+            onClick={() => play(step.id, step.voice)}
           >
-            <Icon name="volume" className="rs__speak-icon" />
-            {speaking ? (
+            <Icon name={playingKey === step.id ? "close" : "volume"} className="rs__speak-icon" />
+            {playingKey === step.id ? (
               <>
                 <span>Speaking…</span>
                 <span className="wave" aria-hidden="true">
@@ -104,7 +148,11 @@ export default function RealitySupport({ onReturn }: RealitySupportProps) {
           </button>
         ) : (
           <div className="rs__actions">
-            <button type="button" className="rs__again" onClick={replay}>
+            <button
+              type="button"
+              className="rs__again"
+              onClick={() => play("grounding", groundingMessage)}
+            >
               Tell me again
             </button>
             <button type="button" className="rs__done" onClick={onReturn}>

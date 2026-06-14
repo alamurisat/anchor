@@ -1,10 +1,78 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Connect } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000,
-    strictPort: true,
-  },
+// Calls ElevenLabs text-to-speech and returns audio. Shared by the dev
+// middleware below and the Vercel function in /api/tts.ts.
+async function synthesize(apiKey: string, text: string, voiceId: string) {
+  return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "content-type": "application/json",
+      accept: "audio/mpeg",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: "eleven_multilingual_v2",
+      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+    }),
+  });
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const apiKey = env.ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY || "";
+
+  return {
+    plugins: [
+      react(),
+      {
+        // Local dev equivalent of /api/tts so the key never reaches the browser.
+        name: "anchor-tts-dev",
+        configureServer(server) {
+          const handler: Connect.SimpleHandleFunction = async (req, res) => {
+            try {
+              let raw = "";
+              for await (const chunk of req) raw += chunk;
+              const { text, voiceId } = JSON.parse(raw || "{}");
+
+              if (!apiKey) {
+                res.statusCode = 503;
+                res.setHeader("content-type", "application/json");
+                return res.end(JSON.stringify({ error: "no_api_key" }));
+              }
+              if (!text || !voiceId) {
+                res.statusCode = 400;
+                res.setHeader("content-type", "application/json");
+                return res.end(JSON.stringify({ error: "bad_request" }));
+              }
+
+              const r = await synthesize(apiKey, text, voiceId);
+              if (!r.ok) {
+                res.statusCode = r.status;
+                res.setHeader("content-type", "application/json");
+                return res.end(JSON.stringify({ error: "tts_failed" }));
+              }
+              const buf = Buffer.from(await r.arrayBuffer());
+              res.statusCode = 200;
+              res.setHeader("content-type", "audio/mpeg");
+              res.end(buf);
+            } catch {
+              res.statusCode = 500;
+              res.setHeader("content-type", "application/json");
+              res.end(JSON.stringify({ error: "server_error" }));
+            }
+          };
+          server.middlewares.use("/api/tts", (req, res, next) => {
+            if (req.method !== "POST") return next();
+            handler(req, res);
+          });
+        },
+      },
+    ],
+    server: {
+      port: 3000,
+      strictPort: true,
+    },
+  };
 });

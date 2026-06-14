@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { stories, storyTopics, type Story } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type StoryKeeperProps = {
@@ -7,7 +8,7 @@ type StoryKeeperProps = {
 };
 
 export default function StoryKeeper({ onBack }: StoryKeeperProps) {
-  const [archive, setArchive] = useState<Story[]>(stories);
+  const [archive, setArchive] = usePersistentState<Story[]>("storykeeper.archive", stories);
   const [query, setQuery] = useState("");
   const [recording, setRecording] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);

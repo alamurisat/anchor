@@ -3996,20 +3996,21 @@ button:focus-visible {
    MEMORY BOOK — friends & family (Figma design)
    ============================================================ */
 .app--memorybook {
-  background: #efe8dd;
+  background: var(--cream);
 }
 
 .mbook {
-  --mb-bg: #efe8dd;
-  --mb-card: #f7f2ea;
-  --mb-input: #faf6ef;
-  --mb-input-filled: #ece3d4;
-  --mb-accent: #7a4f28;
-  --mb-accent-soft: #b0824f;
-  --mb-label: #8a6b4a;
-  --mb-ink: #3a2f25;
-  --mb-muted: #8a7a68;
-  --mb-line: #e7ddce;
+  /* Mapped to the global Anchor palette so it matches every other screen. */
+  --mb-bg: var(--cream);
+  --mb-card: var(--surface);
+  --mb-input: var(--cream);
+  --mb-input-filled: var(--peach);
+  --mb-accent: var(--orange);
+  --mb-accent-soft: var(--orange-deep);
+  --mb-label: var(--orange-deep);
+  --mb-ink: var(--ink);
+  --mb-muted: var(--ink-soft);
+  --mb-line: var(--border);
 
   min-height: 100vh;
   background: var(--mb-bg);
@@ -4018,7 +4019,7 @@ button:focus-visible {
 
 .mbook__bar {
   height: 6px;
-  background: linear-gradient(90deg, #5a3a1e, #b07a45 45%, #7a4f28 70%, #5a3a1e);
+  background: var(--orange);
 }
 
 .mbook__inner {
@@ -4071,7 +4072,7 @@ button:focus-visible {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 2.2rem;
-  color: #2c241c;
+  color: var(--ink);
   letter-spacing: 0.01em;
 }
 
@@ -4159,12 +4160,12 @@ button:focus-visible {
 }
 
 .mb-input::placeholder {
-  color: #a9967f;
+  color: var(--ink-faint);
 }
 
 .mb-input:focus {
   border-color: var(--mb-accent-soft);
-  box-shadow: 0 0 0 4px rgba(176, 130, 79, 0.15);
+  box-shadow: 0 0 0 4px rgba(217, 119, 87, 0.15);
 }
 
 .mb-input--filled {
@@ -4248,7 +4249,7 @@ button:focus-visible {
 }
 
 .mb-add:hover {
-  background: #693f1d;
+  background: var(--orange-deep);
 }
 
 .mb-chips {
@@ -4262,7 +4263,7 @@ button:focus-visible {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--mb-accent);
-  background: #efe2d0;
+  background: var(--peach);
   padding: 0.4rem 0.9rem;
   border-radius: 999px;
 }
@@ -4291,7 +4292,7 @@ button:focus-visible {
 .mb-save:disabled {
   cursor: not-allowed;
   color: #f3ece1;
-  background: #d8c6ab;
+  background: var(--apricot);
   box-shadow: none;
 }
 
@@ -4332,7 +4333,7 @@ button:focus-visible {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.5rem;
-  color: #2c241c;
+  color: var(--ink);
 }
 
 .mbook__empty {
@@ -4364,7 +4365,7 @@ button:focus-visible {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.4rem;
-  color: #2c241c;
+  color: var(--ink);
 }
 
 .mb-memory__date {
@@ -4398,7 +4399,7 @@ button:focus-visible {
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
   color: var(--mb-accent);
-  background: #efe2d0;
+  background: var(--peach);
 }
 
 .mb-tag__icon {
@@ -5369,4 +5370,613 @@ button:focus-visible {
 
 .cg-alert__dismiss:hover {
   color: var(--clay);
+}
+
+/* ============================================================
+   MEMORY LANE — a path of favourite places
+   ============================================================ */
+.lane {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.lane-stop {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+}
+
+/* Connecting line down the lane */
+.lane-stop:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 1.5rem;
+  top: 3rem;
+  bottom: -1.1rem;
+  width: 2px;
+  background: var(--apricot);
+  transform: translateX(-1px);
+}
+
+.lane-node {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 3rem;
+  width: 3rem;
+  height: 3rem;
+  padding: 0.8rem;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--orange);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.lane-card {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.lane-card__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+
+.lane-card__story {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.lane-card .listen {
+  margin-top: 0.8rem;
+}
+
+/* ============================================================
+   CAREGIVER — support controls (pause + calming voice)
+   ============================================================ */
+.cg-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.cg-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cg-toggle__title {
+  margin: 0;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.cg-toggle__state {
+  margin: 0.1rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.cg-switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 3.4rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: #d6cfc2;
+  transition: background 0.2s ease;
+}
+
+.cg-switch.is-on {
+  background: var(--calm);
+}
+
+.cg-switch__knob {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30, 28, 24, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.cg-switch.is-on .cg-switch__knob {
+  transform: translateX(1.5rem);
+}
+
+.cg-voice {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.cg-voice__title {
+  margin: 0;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.cg-voice__sub {
+  margin: 0.1rem 0 0.7rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.cg-voice__pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.voice-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1.5px solid var(--border);
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.voice-chip::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--apricot);
+}
+
+.voice-chip.is-on {
+  color: #fff;
+  background: var(--orange);
+  border-color: transparent;
+}
+
+.voice-chip.is-on::before {
+  background: #fff;
+}
+
+/* ============================================================
+   VOICE — grounding playback + voice companion setup
+   ============================================================ */
+.ground-voice {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 1.35rem 1.4rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.ground-voice__transcript {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.ground-voice__controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+.ground-voice__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.02rem;
+  color: #fff;
+  background: var(--orange);
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ground-voice__btn.is-on {
+  animation: glowpulse 1.2s ease-in-out infinite;
+}
+
+.ground-voice__btn--stop {
+  color: var(--clay);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border);
+}
+
+.ground-voice__icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.ground-voice__by {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Voice chip relationship sublabel (caregiver picker) */
+.voice-chip__rel {
+  font-weight: 600;
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+/* Voice Companion Setup */
+.vs {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.vs-consent {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.vs-consent input {
+  margin-top: 0.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  accent-color: var(--orange);
+}
+
+.vs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vs-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.vs-input {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 0.9rem 1rem;
+  font: inherit;
+  font-size: 1.1rem;
+  color: var(--ink);
+  outline: none;
+}
+
+.vs-input:focus {
+  border-color: var(--orange);
+}
+
+.vs-recorder {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.35rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.vs-recorder__prompt {
+  margin: 0 0 1.2rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.vs-recorder__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.vs-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #fff;
+  background: var(--orange);
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+
+.vs-rec:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vs-rec--stop {
+  background: #df5347;
+}
+
+.vs-rec__mic {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.vs-rec__dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.vs-progress {
+  width: 100%;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--cream-2);
+  overflow: hidden;
+}
+
+.vs-progress__bar {
+  height: 100%;
+  background: var(--orange);
+  border-radius: 999px;
+  transition: width 0.3s linear;
+}
+
+.vs-time {
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.vs-recorder__note {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.vs-save {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: #fff;
+  background: var(--orange);
+  padding: 1rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+}
+
+.vs-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.vs-saved {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.vs-voice {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 0.9rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.vs-voice__avatar {
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--orange);
+  display: grid;
+  place-items: center;
+}
+
+.vs-voice__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.vs-voice__name {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.vs-voice__rel {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.vs-voice__tag {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  background: var(--cream-2);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+
+.vs-voice__tag.is-ready {
+  color: #2f7d52;
+  background: #eaf3ed;
+}
+
+/* ============================================================
+   PATIENT VIEW — extra accessible (early–mid stage dementia)
+   ============================================================ */
+.phero__today {
+  display: inline-block;
+  margin: 1.1rem 0 0;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--clay);
+  background: var(--peach);
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+}
+
+/* Single-column list of large, clearly-labelled actions */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.bigrow {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font: inherit;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.bigrow:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.bigrow:active {
+  transform: translateY(0);
+}
+
+.bigrow__icon {
+  flex: 0 0 3.6rem;
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0.9rem;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--orange);
+  display: grid;
+  place-items: center;
+}
+
+.bigrow__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bigrow__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.55rem;
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.bigrow__sub {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.bigrow__chev {
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--clay);
+  transform: rotate(180deg);
+}
+
+/* A touch more breathing room + larger help button on the patient home */
+.home--patient {
+  gap: 2rem;
+}
+
+.home--patient .reality-cta {
+  padding: 1.6rem 1.6rem;
+}
+
+.home--patient .reality-cta__title {
+  font-size: 1.8rem;
+}
+
+.home--patient .reality-cta__sub {
+  font-size: 1.1rem;
+}
+
+.home--patient .home__footnote {
+  font-size: 1rem;
 }

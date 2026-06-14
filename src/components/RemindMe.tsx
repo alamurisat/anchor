@@ -5,6 +5,7 @@ import {
   remindTasks,
   type RemindTask,
 } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type RemindMeProps = {
@@ -13,7 +14,7 @@ type RemindMeProps = {
 };
 
 export default function RemindMe({ onBack, embedded }: RemindMeProps) {
-  const [tasks, setTasks] = useState<RemindTask[]>(remindTasks);
+  const [tasks, setTasks] = usePersistentState<RemindTask[]>("remindme.tasks", remindTasks);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
 

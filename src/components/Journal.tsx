@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { journalEntries, moods, type JournalEntry } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type JournalProps = {
@@ -24,7 +25,7 @@ function nowTime(): string {
 }
 
 export default function Journal({ onBack }: JournalProps) {
-  const [entries, setEntries] = useState<JournalEntry[]>(journalEntries);
+  const [entries, setEntries] = usePersistentState<JournalEntry[]>("journal.entries", journalEntries);
   const [composer, setComposer] = useState<Composer>("write");
   const [moodId, setMoodId] = useState<string>("calm");
   const [draft, setDraft] = useState("");

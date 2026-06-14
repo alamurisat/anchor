@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { monthOptions, type SharedMemory } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type MemoryBookProps = {
@@ -18,9 +19,9 @@ const emptyForm = {
 
 export default function MemoryBook({ onBack }: MemoryBookProps) {
   const [view, setView] = useState<View>("home");
-  const [name, setName] = useState("");
-  const [connection, setConnection] = useState("");
-  const [memories, setMemories] = useState<SharedMemory[]>([]);
+  const [name, setName] = usePersistentState("mb.name", "");
+  const [connection, setConnection] = usePersistentState("mb.connection", "");
+  const [memories, setMemories] = usePersistentState<SharedMemory[]>("mb.memories", []);
 
   // Add-a-memory form state.
   const [form, setForm] = useState(emptyForm);
@@ -278,7 +279,7 @@ export default function MemoryBook({ onBack }: MemoryBookProps) {
               className="mb-input mb-input--filled"
               type="text"
               value={name}
-              placeholder="e.g. Margaret"
+              placeholder="e.g. Angela"
               onChange={(e) => setName(e.target.value)}
             />
           </label>

@@ -64,7 +64,7 @@ export type GroundingContext = {
 };
 
 export const caregiverName = "Sarah";
-export const personName = "Margaret";
+export const personName = "Angela";
 export const todayLabel = "Tuesday morning";
 
 export const todaysRoutine: RoutineItem[] = [

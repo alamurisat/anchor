@@ -15,8 +15,13 @@ import CareCircle from "./CareCircle";
 import SafePath from "./SafePath";
 import Messages from "./Messages";
 
+import type { VoiceProfile } from "../lib/voice";
+
 type CaregiverViewProps = {
   onSwitch: () => void;
+  voices: VoiceProfile[];
+  groundingVoiceId: string;
+  onVoiceChange: (voiceId: string) => void;
 };
 
 type Mood = "calm" | "stressed" | "calming";
@@ -64,11 +69,18 @@ function nowTime(): string {
   return `${h}:${m} ${ap}`;
 }
 
-export default function CaregiverView({ onSwitch }: CaregiverViewProps) {
+export default function CaregiverView({
+  onSwitch,
+  voices,
+  groundingVoiceId,
+  onVoiceChange,
+}: CaregiverViewProps) {
   const [mood, setMood] = useState<Mood>("calm");
   const [tab, setTab] = useState<TabId>("calendar");
   const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([]);
   const [connected, setConnected] = useState(false);
+  // Caregiver can pause automated support once they're physically present.
+  const [paused, setPaused] = useState(false);
 
   const portRef = useRef<any>(null);
   const readerRef = useRef<any>(null);
@@ -98,13 +110,16 @@ export default function CaregiverView({ onSwitch }: CaregiverViewProps) {
 
   // Map a serial line from the Anchor device to a caregiver alert.
   function handleSignal(raw: string) {
+    // When a caregiver is present, support is paused and signals are ignored.
+    if (paused) return;
     const line = raw.trim();
     if (!line) return;
     if (line.includes("LOUD_SOUND")) {
       setMood("stressed");
-      pushAlert("volume", "warn", `Loud sound detected near ${personName}`);
+      pushAlert("volume", "warn", `It got loud near ${personName} just now`);
     } else if (line.includes("BUTTON_PRESSED")) {
-      pushAlert("alert", "urgent", `${personName} pressed the help button`);
+      setMood("stressed");
+      pushAlert("alert", "urgent", `${personName} pressed her help button`);
     }
   }
 
@@ -171,13 +186,24 @@ export default function CaregiverView({ onSwitch }: CaregiverViewProps) {
     setLiveAlerts((prev) => prev.filter((a) => a.id !== id));
   }
 
+  function togglePaused() {
+    setPaused((p) => {
+      // Arriving in person settles things: clear live alerts and reset mood.
+      if (!p) {
+        setLiveAlerts([]);
+        setMood("calm");
+      }
+      return !p;
+    });
+  }
+
   const stress: Alert[] =
     mood === "stressed"
       ? [
           {
             id: "stress",
             icon: "alert",
-            text: `${personName} is showing signs of stress. Anchor is reorienting her`,
+            text: `${personName} seems a little stressed. Anchor is gently helping her settle`,
           },
         ]
       : [];
@@ -226,10 +252,10 @@ export default function CaregiverView({ onSwitch }: CaregiverViewProps) {
             <p className="cg-monitor__title">Anchor device</p>
             <p className="cg-monitor__state">
               {connected
-                ? "Connected · listening for sound & button"
+                ? "Connected and listening for sounds and the help button"
                 : serialSupported
                 ? "Not connected"
-                : "Live USB not supported here — use Chrome, or simulate below"}
+                : "This browser can’t reach the device. Open Anchor in Chrome, or try the buttons below."}
             </p>
           </div>
           {serialSupported &&
@@ -255,6 +281,50 @@ export default function CaregiverView({ onSwitch }: CaregiverViewProps) {
           <button type="button" onClick={() => handleSignal("BUTTON_PRESSED")}>
             Button press
           </button>
+        </div>
+      </section>
+
+      <section className="cg-controls" aria-label="Support controls">
+        <div className="cg-toggle">
+          <div className="cg-toggle__text">
+            <p className="cg-toggle__title">When you’re here</p>
+            <p className="cg-toggle__state">
+              {paused
+                ? `Paused while you’re here with ${personName}.`
+                : `Anchor is keeping an eye on ${personName}.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!paused}
+            className={`cg-switch ${paused ? "" : "is-on"}`}
+            onClick={togglePaused}
+          >
+            <span className="cg-switch__knob" />
+          </button>
+        </div>
+
+        <div className="cg-voice">
+          <p className="cg-voice__title">Preferred grounding voice</p>
+          <p className="cg-voice__sub">
+            Whose voice {personName} hears when Anchor calms her down
+          </p>
+          <div className="cg-voice__pick" role="radiogroup" aria-label="Preferred grounding voice">
+            {voices.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="radio"
+                aria-checked={groundingVoiceId === v.id}
+                className={`voice-chip ${groundingVoiceId === v.id ? "is-on" : ""}`}
+                onClick={() => onVoiceChange(v.id)}
+              >
+                {v.name}
+                <span className="voice-chip__rel">{v.relationship}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

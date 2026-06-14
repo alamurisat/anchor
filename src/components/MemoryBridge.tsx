@@ -66,8 +66,6 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
   const [submitted, setSubmitted] = useState(false);
   const [results, setResults] = useState<BridgeMemory[]>(bridgeMemories);
   const [listening, setListening] = useState(false);
-  const [sharedCount, setSharedCount] = useState(bridgeMemories.length);
-  const [justAdded, setJustAdded] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -102,13 +100,6 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
     setListening(false);
   }
 
-  function addMemory() {
-    setSharedCount((c) => c + 1);
-    setJustAdded(true);
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setJustAdded(false), 2600);
-  }
-
   const narrative = narrate(query, results);
 
   return (
@@ -118,8 +109,8 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
           <Icon name="back" className="icon" />
         </button>
         <div className="bridge__titles">
-          <h1>Memory Lane</h1>
-          <p>{sharedCount} memories shared by family</p>
+          <h1>MemoryBridge</h1>
+          <p>{bridgeMemories.length} memories shared by family</p>
         </div>
       </header>
 
@@ -199,30 +190,6 @@ export default function MemoryBridge({ onBack }: MemoryBridgeProps) {
           </article>
         ))}
       </div>
-
-      <section className="add" aria-label="Add a memory">
-        <div className="add__head">
-          <h2>Add a memory</h2>
-          <p>Photos, videos, and voice notes help {personName} feel grounded.</p>
-        </div>
-        <div className="add__row">
-          <button type="button" className="add__btn" onClick={addMemory}>
-            <Icon name="photo" className="add__icon" />
-            Photo
-          </button>
-          <button type="button" className="add__btn" onClick={addMemory}>
-            <Icon name="video" className="add__icon" />
-            Video
-          </button>
-          <button type="button" className="add__btn" onClick={addMemory}>
-            <Icon name="voice" className="add__icon" />
-            Voice
-          </button>
-        </div>
-        <p className={`add__note ${justAdded ? "add__note--show" : ""}`} role="status">
-          Thank you. Your memory was added to {personName}’s collection.
-        </p>
-      </section>
 
       {listening && (
         <div className="voice" role="dialog" aria-label="Listening">

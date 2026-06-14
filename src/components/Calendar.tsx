@@ -7,6 +7,7 @@ import {
   type CalendarEvent,
   type EventKind,
 } from "../data";
+import { usePersistentState } from "../lib/usePersistentState";
 import { Icon } from "./Icons";
 
 type CalendarProps = {
@@ -17,7 +18,7 @@ type CalendarProps = {
 const order: EventKind[] = ["medication", "appointment", "call", "meal", "hydration"];
 
 export default function Calendar({ onBack, embedded }: CalendarProps) {
-  const [events, setEvents] = useState<CalendarEvent[]>(calendarEvents);
+  const [events, setEvents] = usePersistentState<CalendarEvent[]>("calendar.events", calendarEvents);
   const [filter, setFilter] = useState<EventKind | "all">("all");
 
   function toggle(id: string) {

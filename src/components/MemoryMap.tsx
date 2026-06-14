@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { mapPlaces, type MapPlace } from "../data";
+import { mapPlaces } from "../data";
 import { Icon } from "./Icons";
 
 type MemoryMapProps = {
@@ -7,8 +7,7 @@ type MemoryMapProps = {
 };
 
 export default function MemoryMap({ onBack }: MemoryMapProps) {
-  const [active, setActive] = useState<MapPlace>(mapPlaces[0]);
-  const [playing, setPlaying] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -17,18 +16,15 @@ export default function MemoryMap({ onBack }: MemoryMapProps) {
     };
   }, []);
 
-  function select(place: MapPlace) {
-    setActive(place);
-    setPlaying(false);
-    if (timer.current) window.clearTimeout(timer.current);
-  }
-
-  function togglePlay() {
-    setPlaying((p) => !p);
-    if (timer.current) window.clearTimeout(timer.current);
-    if (!playing) {
-      timer.current = window.setTimeout(() => setPlaying(false), 3500);
+  function togglePlay(id: string) {
+    if (playingId === id) {
+      setPlayingId(null);
+      if (timer.current) window.clearTimeout(timer.current);
+      return;
     }
+    setPlayingId(id);
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setPlayingId(null), 3500);
   }
 
   return (
@@ -38,63 +34,49 @@ export default function MemoryMap({ onBack }: MemoryMapProps) {
           <Icon name="back" className="icon" />
         </button>
         <div className="bridge__titles">
-          <h1>Memory Map</h1>
-          <p>The places that made you, you</p>
+          <h1>Memory Lane</h1>
+          <p>A walk through your favourite places</p>
         </div>
       </header>
 
-      <div className="map" role="group" aria-label="Map of meaningful places">
-        <span className="map__path" aria-hidden="true" />
-        {mapPlaces.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`pin ${active.id === p.id ? "is-active" : ""}`}
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            onClick={() => select(p)}
-            aria-label={p.title}
-          >
-            <span className="pin__bubble">
-              <Icon name={p.icon} className="pin__icon" />
-            </span>
-            <span className="pin__label">{p.title}</span>
-          </button>
-        ))}
-      </div>
-
-      <article className="place">
-        <div className="place__photo" aria-hidden="true">
-          <Icon name={active.icon} className="place__icon" />
-        </div>
-        <div className="place__text">
-          <h2>{active.title}</h2>
-          <p>{active.story}</p>
-          {active.audio && (
-            <button
-              type="button"
-              className={`listen ${playing ? "is-playing" : ""}`}
-              onClick={togglePlay}
-            >
-              <Icon name={playing ? "close" : "play"} className="listen__icon" />
-              {playing ? (
-                <>
-                  <span>Playing…</span>
-                  <span className="wave" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </>
-              ) : (
-                <span>Listen to this memory · {active.audio}</span>
-              )}
-            </button>
-          )}
-        </div>
-      </article>
-
-      <p className="map__hint">Tap a place on the map to revisit its story.</p>
+      <ol className="lane">
+        {mapPlaces.map((p) => {
+          const playing = playingId === p.id;
+          return (
+            <li key={p.id} className="lane-stop">
+              <span className="lane-node" aria-hidden="true">
+                <Icon name={p.icon} className="icon" />
+              </span>
+              <article className="lane-card">
+                <h2 className="lane-card__title">{p.title}</h2>
+                <p className="lane-card__story">{p.story}</p>
+                {p.audio && (
+                  <button
+                    type="button"
+                    className={`listen ${playing ? "is-playing" : ""}`}
+                    onClick={() => togglePlay(p.id)}
+                  >
+                    <Icon name={playing ? "close" : "play"} className="listen__icon" />
+                    {playing ? (
+                      <>
+                        <span>Playing…</span>
+                        <span className="wave" aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                          <span />
+                        </span>
+                      </>
+                    ) : (
+                      <span>Listen to this memory · {p.audio}</span>
+                    )}
+                  </button>
+                )}
+              </article>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

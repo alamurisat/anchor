@@ -10,6 +10,7 @@ import { Icon } from "./Icons";
 import type { IconName } from "../data";
 import type { Section } from "./RoleLanding";
 import logo from "../assets/anchor.png";
+import AddMemoryCard from "./AddMemoryCard";
 
 type SectionHomeProps = {
   section: Section;
@@ -22,7 +23,7 @@ type TileDef = { view: string; icon: IconName; title: string; sub: string };
 const FEATURES: Record<string, { icon: IconName; title: string; sub: string }> = {
   dailyanchor: { icon: "sunrise", title: "Daily Anchor", sub: "Today, one step at a time" },
   companion: { icon: "person", title: "Companion", sub: "Who is this?" },
-  bridge: { icon: "sparkle", title: "Memory Lane", sub: "Ask to see a memory" },
+  bridge: { icon: "sparkle", title: "MemoryBridge", sub: "Ask to see a memory" },
   journal: { icon: "book", title: "Journal", sub: "How are you feeling?" },
   messages: { icon: "chat", title: "Messages", sub: "Notes & calls" },
   calendar: { icon: "calendar", title: "Calendar", sub: "The full day" },
@@ -31,7 +32,8 @@ const FEATURES: Record<string, { icon: IconName; title: string; sub: string }> =
   safepath: { icon: "shield", title: "SafePath", sub: "Wandering safety" },
   memorybook: { icon: "bookheart", title: "Memory Book", sub: "Share a memory" },
   storykeeper: { icon: "mic", title: "StoryKeeper", sub: "Record a story" },
-  memorymap: { icon: "map", title: "Memory Map", sub: "Places & stories" },
+  memorymap: { icon: "map", title: "Memory Lane", sub: "Favourite places" },
+  voicesetup: { icon: "volume", title: "Voice Companion", sub: "Record a familiar voice" },
 };
 
 const SECTIONS: Record<
@@ -48,7 +50,7 @@ const SECTIONS: Record<
   },
   family: {
     label: "Friends & Family",
-    views: ["memorybook", "storykeeper", "memorymap", "messages"],
+    views: ["voicesetup", "memorybook", "storykeeper", "memorymap", "messages"],
   },
 };
 
@@ -56,12 +58,21 @@ function tilesFor(section: Section): TileDef[] {
   return SECTIONS[section].views.map((view) => ({ view, ...FEATURES[view] }));
 }
 
+// Plain-language, dementia-friendly labels for the patient view.
+const PATIENT_TILES: TileDef[] = [
+  { view: "dailyanchor", icon: "sunrise", title: "My Day", sub: "What is happening today" },
+  { view: "companion", icon: "person", title: "Who Is This?", sub: "See who is with you" },
+  { view: "bridge", icon: "sparkle", title: "See a Memory", sub: "Look at photos and stories" },
+  { view: "messages", icon: "chat", title: "My Family", sub: "Messages and calls" },
+  { view: "journal", icon: "book", title: "How I Feel", sub: "Share how you feel today" },
+];
+
 function caregiverAlerts() {
   const confusion = [
     {
       id: "confusion-1",
       icon: "sparkle" as IconName,
-      text: "10:42 AM · Confusion moment. Anchor reoriented Margaret (detected via wearable)",
+      text: "10:42 AM · Confusion moment. Anchor reoriented Angela (detected via wearable)",
       to: "reality",
     },
   ];
@@ -101,6 +112,7 @@ export default function SectionHome({ section, onNavigate, onSwitch }: SectionHo
           <section className="phero" aria-label="Welcome">
             <p className="phero__hello">Hello, {personName}</p>
             <p className="phero__line">You are safe, and you are loved.</p>
+            <p className="phero__today">Today is {todayLabel}.</p>
           </section>
 
           <button
@@ -173,26 +185,53 @@ export default function SectionHome({ section, onNavigate, onSwitch }: SectionHo
         </section>
       )}
 
-      <nav className={`tiles ${section === "patient" ? "tiles--large" : ""}`} aria-label="Features">
-        {tiles.map((tile) => (
-          <button
-            key={tile.view}
-            type="button"
-            className="tile"
-            onClick={() => onNavigate(tile.view)}
-            aria-label={tile.title}
-          >
-            <span className="tile__icon">
-              <Icon name={tile.icon} className="icon" />
-            </span>
-            <span className="tile__title">{tile.title}</span>
-            <span className="tile__sub">{tile.sub}</span>
-          </button>
-        ))}
-      </nav>
+      {section === "family" && <AddMemoryCard />}
+
+      {section === "patient" ? (
+        <nav className="stack" aria-label="Things you can do">
+          {PATIENT_TILES.map((tile) => (
+            <button
+              key={tile.view}
+              type="button"
+              className="bigrow"
+              onClick={() => onNavigate(tile.view)}
+              aria-label={tile.title}
+            >
+              <span className="bigrow__icon">
+                <Icon name={tile.icon} className="icon" />
+              </span>
+              <span className="bigrow__text">
+                <span className="bigrow__title">{tile.title}</span>
+                <span className="bigrow__sub">{tile.sub}</span>
+              </span>
+              <span className="bigrow__chev" aria-hidden="true">
+                <Icon name="back" className="icon" />
+              </span>
+            </button>
+          ))}
+        </nav>
+      ) : (
+        <nav className="tiles" aria-label="Features">
+          {tiles.map((tile) => (
+            <button
+              key={tile.view}
+              type="button"
+              className="tile"
+              onClick={() => onNavigate(tile.view)}
+              aria-label={tile.title}
+            >
+              <span className="tile__icon">
+                <Icon name={tile.icon} className="icon" />
+              </span>
+              <span className="tile__title">{tile.title}</span>
+              <span className="tile__sub">{tile.sub}</span>
+            </button>
+          ))}
+        </nav>
+      )}
 
       {section === "patient" && (
-        <p className="home__footnote">Voice playback is read in a familiar voice.</p>
+        <p className="home__footnote">Anchor can read everything out loud to you.</p>
       )}
     </div>
   );
