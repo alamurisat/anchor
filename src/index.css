@@ -6661,3 +6661,11 @@ button {
   color: var(--ink);
   line-height: 1.3;
 }
+
+/* Phone: respect notch / home-indicator safe areas in standalone (installed) mode */
+@media (max-width: 460px) {
+  .device__scroll {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

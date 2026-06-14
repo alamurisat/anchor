@@ -92,10 +92,6 @@ export default function SafePath({ onBack, embedded }: SafePathProps) {
         ))}
       </section>
 
-      <p className="disclaimer">
-        SafePath is a supportive prototype, not a medical or emergency device.
-        Always rely on professional care and emergency services when needed.
-      </p>
     </div>
   );
 }

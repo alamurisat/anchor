@@ -9,6 +9,7 @@ import {
 import { Icon } from "./Icons";
 import { ANCHOR_COMPANION, playVoiceMessage, stopVoice } from "../lib/voice";
 import { startRecognition } from "../lib/listen";
+import { askAnchor, type ChatMessage } from "../lib/chat";
 
 type CompanionProps = {
   onBack: () => void;
@@ -31,8 +32,10 @@ export default function Companion({ onBack }: CompanionProps) {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
+  const [reply, setReply] = useState<string | null>(null);
   const listenTimer = useRef<number | null>(null);
   const stopRecRef = useRef<(() => void) | null>(null);
+  const convo = useRef<ChatMessage[]>([]);
 
   useEffect(() => {
     return () => {
@@ -42,8 +45,22 @@ export default function Companion({ onBack }: CompanionProps) {
     };
   }, []);
 
-  // Interpret what the user said and respond in voice.
-  function handleSpeech(text: string) {
+  // Try a natural Claude reply; fall back to the built-in answers if unavailable.
+  async function handleSpeech(text: string) {
+    const history: ChatMessage[] = [...convo.current, { role: "user", content: text }];
+    const answer = await askAnchor(history);
+    if (answer) {
+      const assistantMsg: ChatMessage = { role: "assistant", content: answer };
+      convo.current = [...history, assistantMsg].slice(-8);
+      setReply(answer);
+      speak(answer);
+    } else {
+      fallbackAnswer(text);
+    }
+  }
+
+  // Keyword-matched answer when the conversational model isn't available.
+  function fallbackAnswer(text: string) {
     const t = text.toLowerCase();
     const said = (...words: string[]) => words.some((w) => t.includes(w));
 
@@ -52,7 +69,6 @@ export default function Companion({ onBack }: CompanionProps) {
     else if (said("tell me", "about", "more")) next = "about";
     else if (said("who")) next = "identity";
 
-    // If a person is named, switch to them.
     const who = companionPeople.find(
       (p) =>
         t.includes(p.name.toLowerCase()) ||
@@ -83,11 +99,13 @@ export default function Companion({ onBack }: CompanionProps) {
   }
 
   function ask(next: CompanionFacet) {
+    setReply(null);
     setFacet(next);
     speak(answerFor(person, next));
   }
 
   function choosePerson(p: CompanionPerson) {
+    setReply(null);
     setPerson(p);
     setFacet("identity");
     speak(answerFor(p, "identity"));
@@ -174,12 +192,12 @@ export default function Companion({ onBack }: CompanionProps) {
         <h2 className="spotlight__name">{person.name}</h2>
         <p className="spotlight__relation">{person.relation}</p>
 
-        <p className="spotlight__answer">{answer}</p>
+        <p className="spotlight__answer">{reply ?? answer}</p>
 
         <button
           type="button"
           className={`spotlight__speak ${speaking ? "is-on" : ""}`}
-          onClick={() => (speaking ? stopSpeak() : speak(answer))}
+          onClick={() => (speaking ? stopSpeak() : speak(reply ?? answer))}
         >
           <Icon name={speaking ? "close" : "volume"} className="spotlight__speak-icon" />
           {speaking ? (

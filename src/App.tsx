@@ -23,6 +23,7 @@ import {
 } from "./lib/voice";
 import type { AddedMemory } from "./data";
 import { usePersistentState } from "./lib/usePersistentState";
+import { primeAudio } from "./lib/voice";
 import { Icon } from "./components/Icons";
 
 type Loc = { section: Section | null; view: string };
@@ -136,7 +137,13 @@ export default function App() {
   useEffect(() => {
     const onPop = () => popOnce();
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    // Unlock audio playback on the first interaction (Safari/Firefox autoplay).
+    const unlock = () => primeAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("pointerdown", unlock);
+    };
   }, []);
 
   let cls: string;

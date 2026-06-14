@@ -28,18 +28,48 @@ export function buildGroundingMessage(): string {
   return `Hi ${personName}. You are safe at home right now. It is ${todayLabel}. Sarah will be visiting later today. Everything is okay.`;
 }
 
-let currentAudio: HTMLAudioElement | null = null;
+// One shared, reusable audio element. Reusing a single element (rather than
+// `new Audio()` each time) lets us "unlock" it once on a user tap so Safari /
+// Firefox allow later programmatic playback (their autoplay policies otherwise
+// block audio that follows an async fetch).
+let audioEl: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
+let primed = false;
 // Every play/stop bumps this. Any in-flight request whose token is stale is
 // discarded, so only one voice is ever heard (no overlapping audio).
 let playToken = 0;
 
-function teardown() {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.src = "";
-    currentAudio = null;
+const SILENT =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+function getEl(): HTMLAudioElement {
+  if (!audioEl) audioEl = new Audio();
+  return audioEl;
+}
+
+// Call from a real user gesture (e.g. first tap) to satisfy autoplay policies.
+export function primeAudio() {
+  if (primed) return;
+  const a = getEl();
+  try {
+    a.src = SILENT;
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        a.pause();
+        a.currentTime = 0;
+        primed = true;
+      }).catch(() => {});
+    } else {
+      primed = true;
+    }
+  } catch {
+    /* ignore */
   }
+}
+
+function teardown() {
+  if (audioEl) audioEl.pause();
   if (currentUrl) {
     URL.revokeObjectURL(currentUrl);
     currentUrl = null;
@@ -59,12 +89,12 @@ export async function playSrc(src: string, onEnded?: () => void): Promise<PlayRe
   const token = ++playToken;
   teardown();
   try {
-    const audio = new Audio(src);
-    currentAudio = audio;
-    audio.addEventListener("ended", () => {
+    const a = getEl();
+    a.src = src;
+    a.onended = () => {
       if (token === playToken) onEnded?.();
-    });
-    await audio.play();
+    };
+    await a.play();
     return { ok: true };
   } catch {
     return { ok: false, reason: "play" };
@@ -105,13 +135,13 @@ export async function playVoiceMessage(
     if (!blob.type.startsWith("audio")) return { ok: false, reason: "not_audio" };
 
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
     currentUrl = url;
-    currentAudio = audio;
-    audio.addEventListener("ended", () => {
+    const a = getEl();
+    a.src = url;
+    a.onended = () => {
       if (token === playToken) onEnded?.();
-    });
-    await audio.play();
+    };
+    await a.play();
     return { ok: true };
   } catch {
     return { ok: false, reason: "network" };
