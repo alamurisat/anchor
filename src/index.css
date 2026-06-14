@@ -10,7 +10,7 @@
 
   --ink: #20201e;
   --ink-soft: #6b6456;
-  --ink-faint: #a39b8c;
+  --ink-faint: #837a6a;
 
   --white: #ffffff;
   --surface: #ffffff;
@@ -2648,9 +2648,22 @@ h3 {
 /* ============================================================
    Focus + motion
    ============================================================ */
-button:focus-visible {
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   outline: 3px solid var(--clay);
   outline-offset: 3px;
+}
+
+/* Text fields keep a clear ring even on mouse focus so it's always obvious
+   which field is active (important for low-vision and older users). */
+input:focus,
+textarea:focus {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
 }
 
 @keyframes breathe {
