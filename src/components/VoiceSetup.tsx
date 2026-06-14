@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { personName } from "../data";
 import { playVoiceMessage, stopVoice, type VoiceProfile } from "../lib/voice";
+import { cloneVoice } from "../lib/clone";
 import { Icon } from "./Icons";
 
 type VoiceSetupProps = {
@@ -24,14 +25,25 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [captured, setCaptured] = useState(false);
+  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+
   const timer = useRef<number | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const blobRef = useRef<Blob | null>(null);
 
   useEffect(() => {
     return () => {
       if (timer.current) window.clearInterval(timer.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (capturedUrl) URL.revokeObjectURL(capturedUrl);
       stopVoice();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function preview(voice: VoiceProfile) {
@@ -51,44 +63,91 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
   function stopRecording() {
     if (timer.current) window.clearInterval(timer.current);
     setRecording(false);
-    setCaptured(true);
+    recorderRef.current?.stop();
   }
 
-  function startRecording() {
-    setCaptured(false);
-    setElapsed(0);
-    setRecording(true);
-    timer.current = window.setInterval(() => {
-      setElapsed((e) => {
-        if (e + 1 >= TARGET) {
-          if (timer.current) window.clearInterval(timer.current);
-          setRecording(false);
-          setCaptured(true);
-          return TARGET;
-        }
-        return e + 1;
+  // Record straight from the microphone, then keep the audio for cloning.
+  async function startRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Recording isn't supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        blobRef.current = blob;
+        if (capturedUrl) URL.revokeObjectURL(capturedUrl);
+        setCapturedUrl(URL.createObjectURL(blob));
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        setCaptured(true);
+      };
+      recorder.start();
+      setError(null);
+      setStatus("idle");
+      setCaptured(false);
+      setElapsed(0);
+      setRecording(true);
+      timer.current = window.setInterval(() => {
+        setElapsed((e) => {
+          const next = e + 1;
+          if (next >= TARGET) {
+            window.clearInterval(timer.current!);
+            window.setTimeout(() => stopRecording(), 0);
+            return TARGET;
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      setError("We couldn't reach the microphone. Please allow mic access and try again.");
+    }
+  }
+
+  const canSave =
+    consent && name.trim() !== "" && captured && status !== "uploading";
+
+  async function save() {
+    if (!canSave || !blobRef.current) return;
+    setStatus("uploading");
+    setError(null);
+    const voiceId = await cloneVoice(name.trim(), relationship.trim(), blobRef.current);
+    if (voiceId) {
+      onAdd({
+        id: voiceId,
+        name: name.trim(),
+        relationship: relationship.trim() || "Family",
+        cloned: true,
       });
-    }, 1000);
-  }
-
-  const canSave = consent && name.trim() !== "" && captured;
-
-  function save() {
-    if (!canSave) return;
-    onAdd({
-      id: `family-${Date.now()}`,
-      name: name.trim(),
-      relationship: relationship.trim() || "Family",
-      cloned: false,
-    });
-    setName("");
-    setRelationship("");
-    setConsent(false);
-    setCaptured(false);
-    setElapsed(0);
+      setName("");
+      setRelationship("");
+      setConsent(false);
+      setCaptured(false);
+      setElapsed(0);
+      if (capturedUrl) URL.revokeObjectURL(capturedUrl);
+      setCapturedUrl(null);
+      blobRef.current = null;
+      setStatus("idle");
+    } else {
+      setStatus("error");
+      setError(
+        "We couldn't create the voice. Cloning needs an ElevenLabs plan that allows it, and the recording must be clear. Please try again."
+      );
+    }
   }
 
   const progress = Math.round((elapsed / TARGET) * 100);
+  const uploading = status === "uploading";
 
   return (
     <div className="vs">
@@ -154,7 +213,7 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
               type="button"
               className="vs-rec"
               onClick={startRecording}
-              disabled={!consent}
+              disabled={!consent || uploading}
             >
               <span className="vs-rec__mic">
                 <Icon name="mic" className="icon" />
@@ -172,13 +231,22 @@ export default function VoiceSetup({ voices, onAdd, onBack }: VoiceSetupProps) {
           </span>
         </div>
 
+        {captured && capturedUrl && !recording && (
+          <audio className="vs-preview" src={capturedUrl} controls aria-label="Your recording" />
+        )}
+
         {!consent && (
           <p className="vs-recorder__note">Please give consent above to record.</p>
+        )}
+        {error && (
+          <p className="vs-recorder__note vs-recorder__note--error" role="status">
+            {error}
+          </p>
         )}
       </section>
 
       <button type="button" className="vs-save" onClick={save} disabled={!canSave}>
-        Save voice profile
+        {uploading ? "Creating voice…" : "Save voice profile"}
       </button>
 
       <section className="vs-saved" aria-label="Saved voices">

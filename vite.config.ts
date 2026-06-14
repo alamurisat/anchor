@@ -81,6 +81,66 @@ export default defineConfig(({ mode }) => {
         },
       },
       {
+        // Local dev equivalent of /api/clone — forwards a recorded sample to
+        // ElevenLabs voice cloning. The key stays server-side.
+        name: "anchor-clone-dev",
+        configureServer(server) {
+          server.middlewares.use("/api/clone", (req, res, next) => {
+            if (req.method !== "POST") return next();
+            (async () => {
+              try {
+                let raw = "";
+                for await (const chunk of req) raw += chunk;
+                const { name, description, audioBase64, mimeType } = JSON.parse(raw || "{}");
+                if (!apiKey) {
+                  res.statusCode = 503;
+                  res.setHeader("content-type", "application/json");
+                  return res.end(JSON.stringify({ error: "no_api_key" }));
+                }
+                if (!name || !audioBase64) {
+                  res.statusCode = 400;
+                  res.setHeader("content-type", "application/json");
+                  return res.end(JSON.stringify({ error: "bad_request" }));
+                }
+                const type = mimeType || "audio/webm";
+                const ext = type.includes("mp4") || type.includes("m4a")
+                  ? "mp4"
+                  : type.includes("ogg")
+                    ? "ogg"
+                    : type.includes("wav")
+                      ? "wav"
+                      : type.includes("mpeg") || type.includes("mp3")
+                        ? "mp3"
+                        : "webm";
+                const buffer = Buffer.from(audioBase64, "base64");
+                const form = new FormData();
+                form.append("name", name);
+                if (description) form.append("description", description);
+                form.append("files", new Blob([buffer], { type }), `sample.${ext}`);
+                const r = await fetch("https://api.elevenlabs.io/v1/voices/add", {
+                  method: "POST",
+                  headers: { "xi-api-key": apiKey },
+                  body: form,
+                });
+                if (!r.ok) {
+                  res.statusCode = r.status;
+                  res.setHeader("content-type", "application/json");
+                  return res.end(JSON.stringify({ error: "clone_failed" }));
+                }
+                const data = await r.json();
+                res.statusCode = 200;
+                res.setHeader("content-type", "application/json");
+                res.end(JSON.stringify({ voiceId: data.voice_id }));
+              } catch {
+                res.statusCode = 500;
+                res.setHeader("content-type", "application/json");
+                res.end(JSON.stringify({ error: "server_error" }));
+              }
+            })();
+          });
+        },
+      },
+      {
         // Local dev equivalent of /api/tts so the key never reaches the browser.
         name: "anchor-tts-dev",
         configureServer(server) {
